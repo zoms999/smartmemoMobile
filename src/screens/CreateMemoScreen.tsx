@@ -34,6 +34,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, CreateMemoRequest, Category, Tag } from '../types';
 import type { RootState, AppDispatch } from '../store';
 import { newMemoService } from '../services/newMemoService';
+import { useDragScroll } from '../hooks/useDragScroll';
 
 type CreateMemoScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -84,6 +85,7 @@ export default function CreateMemoScreen() {
   const theme = useTheme();
   const navigation = useNavigation<CreateMemoScreenNavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
+  const scrollRef = useDragScroll();
   
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -412,7 +414,18 @@ export default function CreateMemoScreen() {
         />
       </Appbar.Header>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={true}
+        bounces={true}
+        alwaysBounceVertical={false}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        ref={scrollRef}
+      >
         {/* 메모 내용 입력 */}
         <Card style={styles.section}>
           <Card.Content>
@@ -834,8 +847,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   content: {
-    flex: 1,
     padding: 16,
+    ...(Platform.OS === 'web' && ({
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      cursor: 'grab',
+    } as any)),
+  },
+  contentContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
+    ...(Platform.OS === 'web' && ({
+      minHeight: '100%',
+      cursor: 'default',
+    } as any)),
   },
   section: {
     marginBottom: 16,

@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "web-dev": "webpack serve --mode development",
+    "web-build": "webpack --mode production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -21,7 +23,7 @@
     "expo-dotenv": "^0.1.0",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react-dom": "^19.0.0",
     "react-native": "0.79.2",
     "react-native-dotenv": "^3.4.11",
     "react-native-mmkv": "^3.2.0",
@@ -35,10 +37,19 @@
     "redux-persist": "^6.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
+    "@babel/core": "^7.27.3",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
+    "@react-native-community/cli": "^18.0.0",
     "@types/react": "~19.0.10",
     "@types/react-native": "^0.72.8",
-    "typescript": "~5.8.3"
+    "babel-loader": "^10.0.0",
+    "css-loader": "^7.1.2",
+    "style-loader": "^4.0.0",
+    "typescript": "~5.8.3",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.1"
   },
   "private": true
 }
