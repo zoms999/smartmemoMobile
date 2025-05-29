@@ -68,6 +68,7 @@ export default function CreateMemoScreen() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [popularTags, setPopularTags] = useState<Tag[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<Tag[]>([]);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [isWidget, setIsWidget] = useState(false);
@@ -126,11 +127,21 @@ export default function CreateMemoScreen() {
   const loadTags = async () => {
     setTagsLoading(true);
     try {
-      const { data, error } = await newMemoService.getTags();
-      if (error) {
-        console.error('태그 로드 오류:', error);
-      } else if (data) {
-        setAvailableTags(data);
+      // 1. 전체 태그 목록 로드 (자동완성용)
+      const { data: allTags, error: allTagsError } = await newMemoService.getTags();
+      if (allTagsError) {
+        console.error('전체 태그 로드 오류:', allTagsError);
+      } else if (allTags) {
+        setAvailableTags(allTags);
+      }
+
+      // 2. 인기 태그 로드 (RPC 함수 사용, 실패 시 일반 태그 사용)
+      const { data: popular, error: popularError } = await newMemoService.getPopularTags(6);
+      if (!popularError && popular) {
+        setPopularTags(popular);
+      } else if (allTags) {
+        // RPC 실패 시 전체 태그에서 처음 6개 사용
+        setPopularTags(allTags.slice(0, 6));
       }
     } catch (error) {
       console.error('태그 로드 예외:', error);
@@ -589,13 +600,13 @@ export default function CreateMemoScreen() {
                 <ActivityIndicator size="small" />
                 <Text style={{ marginLeft: 8 }}>인기 태그 로딩 중...</Text>
               </View>
-            ) : availableTags.length > 0 && (
+            ) : popularTags.length > 0 && (
               <View style={styles.popularTagsContainer}>
                 <Text variant="bodySmall" style={styles.popularTagsTitle}>
                   자주 사용되는 태그
                 </Text>
                 <View style={styles.popularTagsRow}>
-                  {availableTags.slice(0, 6).map((tag) => (
+                  {popularTags.map((tag) => (
                     <Chip
                       key={tag.id}
                       mode="outlined"

@@ -294,11 +294,23 @@ export const newMemoService = {
 
   // 인기 태그 조회 (사용빈도 높은 태그)
   async getPopularTags(limit: number = 10) {
-    // PostgreSQL 함수를 사용하여 tags 배열에서 가장 많이 사용된 태그들 조회
-    const { data, error } = await supabase
-      .rpc('get_popular_tags', { tag_limit: limit });
-    
-    return { data, error };
+    try {
+      // PostgreSQL 함수를 사용하여 tags 배열에서 가장 많이 사용된 태그들 조회
+      const { data, error } = await supabase
+        .rpc('get_popular_tags', { tag_limit: limit });
+      
+      if (error) {
+        console.warn('RPC get_popular_tags 함수 호출 실패, 일반 태그 목록 사용:', error);
+        // RPC 함수가 없거나 실패한 경우 일반 태그 목록으로 대체
+        return await this.getTags();
+      }
+      
+      return { data, error: null };
+    } catch (error) {
+      console.warn('getPopularTags 예외 발생, 일반 태그 목록 사용:', error);
+      // 예외 발생 시 일반 태그 목록으로 대체
+      return await this.getTags();
+    }
   },
 
   // 실시간 메모 변경 구독

@@ -22,6 +22,11 @@ export interface Tag {
   name: string;
 }
 
+// 인기 태그 (사용빈도 포함)
+export interface PopularTag extends Tag {
+  usage_count: number;
+}
+
 // 카테고리 관련 타입
 export interface Category {
   id: number;
