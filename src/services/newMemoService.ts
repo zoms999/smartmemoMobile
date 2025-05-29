@@ -1,7 +1,65 @@
 import { supabase } from './supabase';
-import type { Memo, Category, CreateMemoRequest } from '../types';
+import type { Memo, Category, CreateMemoRequest, Tag } from '../types';
 
 export const newMemoService = {
+  // 태그 관련 메서드
+  async getTags() {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*')
+      .order('name');
+    
+    return { data, error };
+  },
+
+  async createTag(name: string) {
+    // 중복 태그 체크 후 생성
+    const { data: existingTag } = await supabase
+      .from('tags')
+      .select('*')
+      .eq('name', name.trim())
+      .single();
+
+    if (existingTag) {
+      return { data: existingTag, error: null };
+    }
+
+    const { data, error } = await supabase
+      .from('tags')
+      .insert([{ name: name.trim() }])
+      .select()
+      .single();
+    
+    return { data, error };
+  },
+
+  async searchTags(query: string) {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .order('name')
+      .limit(10);
+    
+    return { data, error };
+  },
+
+  async getOrCreateTags(tagNames: string[]) {
+    const tags: Tag[] = [];
+    
+    for (const tagName of tagNames) {
+      const trimmedName = tagName.trim();
+      if (trimmedName) {
+        const { data } = await this.createTag(trimmedName);
+        if (data) {
+          tags.push(data);
+        }
+      }
+    }
+    
+    return tags;
+  },
+
   // 카테고리 관련 메서드
   async getCategories() {
     const { data, error } = await supabase
@@ -58,6 +116,9 @@ export const newMemoService = {
   },
 
   async createMemo(memo: CreateMemoRequest) {
+    // 태그들을 tags 테이블에서 생성/조회 후 메모에 태그 이름 배열로 저장
+    await this.getOrCreateTags(memo.tags);
+
     // id는 자동 생성되므로 제외하고 나머지 필드들만 삽입
     const { data, error } = await supabase
       .from('memos')
@@ -86,6 +147,11 @@ export const newMemoService = {
   },
 
   async updateMemo(id: number, updates: Partial<Omit<Memo, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) {
+    // 태그 업데이트 시 tags 테이블에서 생성/조회
+    if (updates.tags) {
+      await this.getOrCreateTags(updates.tags);
+    }
+
     const { data, error } = await supabase
       .from('memos')
       .update(updates)
@@ -226,6 +292,15 @@ export const newMemoService = {
     return { data, error };
   },
 
+  // 인기 태그 조회 (사용빈도 높은 태그)
+  async getPopularTags(limit: number = 10) {
+    // PostgreSQL 함수를 사용하여 tags 배열에서 가장 많이 사용된 태그들 조회
+    const { data, error } = await supabase
+      .rpc('get_popular_tags', { tag_limit: limit });
+    
+    return { data, error };
+  },
+
   // 실시간 메모 변경 구독
   subscribeToMemos(userId: string, callback: (payload: unknown) => void) {
     return supabase
@@ -253,6 +328,22 @@ export const newMemoService = {
           event: '*',
           schema: 'public',
           table: 'categories',
+        },
+        callback
+      )
+      .subscribe();
+  },
+
+  // 태그 변경 구독
+  subscribeToTags(callback: (payload: unknown) => void) {
+    return supabase
+      .channel('tags')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tags',
         },
         callback
       )

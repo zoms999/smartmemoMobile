@@ -16,6 +16,12 @@ export interface User {
   };
 }
 
+// 태그 관련 타입
+export interface Tag {
+  id: number;
+  name: string;
+}
+
 // 카테고리 관련 타입
 export interface Category {
   id: number;
@@ -30,7 +36,7 @@ export interface Memo {
   is_widget: boolean;
   category_id?: number;
   priority: number; // 0: 낮음, 1: 보통, 2: 높음
-  tags: string[];
+  tags: string[]; // 태그 이름 배열 (호환성 유지)
   color?: string;
   reminder?: string;
   images: string[]; // 이미지 URL 배열

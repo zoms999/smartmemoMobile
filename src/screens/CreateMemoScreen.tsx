@@ -8,6 +8,7 @@ import {
   Platform,
   TouchableOpacity,
   Image,
+  FlatList,
 } from 'react-native';
 import {
   Text,
@@ -24,12 +25,14 @@ import {
   IconButton,
   Menu,
   Divider,
+  Portal,
+  List,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList, CreateMemoRequest, Category } from '../types';
+import type { RootStackParamList, CreateMemoRequest, Category, Tag } from '../types';
 import type { RootState, AppDispatch } from '../store';
 import { newMemoService } from '../services/newMemoService';
 
@@ -64,6 +67,9 @@ export default function CreateMemoScreen() {
   const [tags, setTags] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [suggestedTags, setSuggestedTags] = useState<Tag[]>([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [isWidget, setIsWidget] = useState(false);
   const [reminder, setReminder] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -75,6 +81,7 @@ export default function CreateMemoScreen() {
   const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [tagsLoading, setTagsLoading] = useState(false);
 
   const theme = useTheme();
   const navigation = useNavigation<CreateMemoScreenNavigationProp>();
@@ -82,10 +89,21 @@ export default function CreateMemoScreen() {
   
   const { user } = useSelector((state: RootState) => state.auth);
 
-  // 컴포넌트 마운트 시 카테고리 목록 가져오기
+  // 컴포넌트 마운트 시 카테고리 및 태그 목록 가져오기
   useEffect(() => {
     loadCategories();
+    loadTags();
   }, []);
+
+  // 태그 입력 변화 감지하여 자동완성 제안
+  useEffect(() => {
+    if (tagInput.trim().length > 0) {
+      searchTagSuggestions(tagInput.trim());
+    } else {
+      setSuggestedTags([]);
+      setShowTagSuggestions(false);
+    }
+  }, [tagInput]);
 
   const loadCategories = async () => {
     setCategoriesLoading(true);
@@ -105,15 +123,62 @@ export default function CreateMemoScreen() {
     }
   };
 
-  const handleAddTag = () => {
-    const trimmedTag = tagInput.trim();
-    if (trimmedTag && !tags.includes(trimmedTag) && tags.length < 5) {
-      setTags([...tags, trimmedTag]);
-      setTagInput('');
-    } else if (tags.length >= 5) {
+  const loadTags = async () => {
+    setTagsLoading(true);
+    try {
+      const { data, error } = await newMemoService.getTags();
+      if (error) {
+        console.error('태그 로드 오류:', error);
+      } else if (data) {
+        setAvailableTags(data);
+      }
+    } catch (error) {
+      console.error('태그 로드 예외:', error);
+    } finally {
+      setTagsLoading(false);
+    }
+  };
+
+  const searchTagSuggestions = async (query: string) => {
+    try {
+      const { data, error } = await newMemoService.searchTags(query);
+      if (!error && data) {
+        // 이미 선택된 태그는 제외
+        const filteredSuggestions = data.filter(tag => 
+          !tags.includes(tag.name)
+        );
+        setSuggestedTags(filteredSuggestions);
+        setShowTagSuggestions(filteredSuggestions.length > 0);
+      }
+    } catch (error) {
+      console.error('태그 검색 예외:', error);
+    }
+  };
+
+  const handleAddTag = async (tagName?: string) => {
+    const nameToAdd = tagName || tagInput.trim();
+    
+    if (!nameToAdd) return;
+    
+    if (tags.includes(nameToAdd)) {
+      setSnackbarMessage('이미 추가된 태그입니다.');
+      setShowSnackbar(true);
+      return;
+    }
+
+    if (tags.length >= 5) {
       setSnackbarMessage('태그는 최대 5개까지 추가할 수 있습니다.');
       setShowSnackbar(true);
+      return;
     }
+
+    setTags([...tags, nameToAdd]);
+    setTagInput('');
+    setShowTagSuggestions(false);
+  };
+
+  const handleSelectSuggestedTag = (tag: Tag) => {
+    handleAddTag(tag.name);
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
@@ -228,6 +293,16 @@ export default function CreateMemoScreen() {
       minute: '2-digit' 
     })}`;
   };
+
+  const renderTagSuggestionItem = ({ item }: { item: Tag }) => (
+    <TouchableOpacity
+      style={styles.suggestionItem}
+      onPress={() => handleSelectSuggestedTag(item)}
+    >
+      <Text variant="bodyMedium">{item.name}</Text>
+      <IconButton icon="plus" size={16} />
+    </TouchableOpacity>
+  );
 
   return (
     <KeyboardAvoidingView 
@@ -443,7 +518,7 @@ export default function CreateMemoScreen() {
           </Card.Content>
         </Card>
 
-        {/* 태그 입력 */}
+        {/* 태그 입력 (개선된 자동완성 기능) */}
         <Card style={styles.section}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
@@ -456,19 +531,43 @@ export default function CreateMemoScreen() {
                 placeholder="태그를 입력하세요"
                 mode="outlined"
                 style={styles.tagInput}
-                onSubmitEditing={handleAddTag}
+                onSubmitEditing={() => handleAddTag()}
                 maxLength={20}
+                onFocus={() => {
+                  if (suggestedTags.length > 0) {
+                    setShowTagSuggestions(true);
+                  }
+                }}
               />
               <Button
                 mode="contained"
-                onPress={handleAddTag}
+                onPress={() => handleAddTag()}
                 disabled={!tagInput.trim() || tags.length >= 5}
                 style={styles.addTagButton}
               >
                 추가
               </Button>
             </View>
+
+            {/* 태그 자동완성 제안 */}
+            {showTagSuggestions && suggestedTags.length > 0 && (
+              <Card style={styles.suggestionsCard}>
+                <Card.Content>
+                  <Text variant="bodySmall" style={styles.suggestionsTitle}>
+                    추천 태그
+                  </Text>
+                  <FlatList
+                    data={suggestedTags}
+                    renderItem={renderTagSuggestionItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    style={styles.suggestionsList}
+                    showsVerticalScrollIndicator={false}
+                  />
+                </Card.Content>
+              </Card>
+            )}
             
+            {/* 선택된 태그들 */}
             {tags.length > 0 && (
               <View style={styles.tagsContainer}>
                 {tags.map((tag) => (
@@ -481,6 +580,40 @@ export default function CreateMemoScreen() {
                     {tag}
                   </Chip>
                 ))}
+              </View>
+            )}
+
+            {/* 인기 태그 표시 */}
+            {tagsLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" />
+                <Text style={{ marginLeft: 8 }}>인기 태그 로딩 중...</Text>
+              </View>
+            ) : availableTags.length > 0 && (
+              <View style={styles.popularTagsContainer}>
+                <Text variant="bodySmall" style={styles.popularTagsTitle}>
+                  자주 사용되는 태그
+                </Text>
+                <View style={styles.popularTagsRow}>
+                  {availableTags.slice(0, 6).map((tag) => (
+                    <Chip
+                      key={tag.id}
+                      mode="outlined"
+                      onPress={() => {
+                        if (!tags.includes(tag.name) && tags.length < 5) {
+                          handleAddTag(tag.name);
+                        }
+                      }}
+                      style={[
+                        styles.popularTag,
+                        tags.includes(tag.name) && styles.popularTagSelected
+                      ]}
+                      disabled={tags.includes(tag.name) || tags.length >= 5}
+                    >
+                      {tag.name}
+                    </Chip>
+                  ))}
+                </View>
               </View>
             )}
           </Card.Content>
@@ -730,6 +863,28 @@ const styles = StyleSheet.create({
   addTagButton: {
     alignSelf: 'flex-end',
   },
+  suggestionsCard: {
+    marginTop: 8,
+    backgroundColor: '#F8F9FA',
+  },
+  suggestionsTitle: {
+    marginBottom: 8,
+    fontWeight: 'bold',
+    opacity: 0.7,
+  },
+  suggestionsList: {
+    maxHeight: 120,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginBottom: 4,
+    backgroundColor: 'white',
+  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -738,6 +893,25 @@ const styles = StyleSheet.create({
   },
   tag: {
     marginBottom: 4,
+  },
+  popularTagsContainer: {
+    marginTop: 16,
+  },
+  popularTagsTitle: {
+    marginBottom: 8,
+    fontWeight: 'bold',
+    opacity: 0.7,
+  },
+  popularTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  popularTag: {
+    marginBottom: 4,
+  },
+  popularTagSelected: {
+    opacity: 0.5,
   },
   switchContainer: {
     flexDirection: 'row',
