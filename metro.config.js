@@ -1,20 +1,19 @@
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { getDefaultConfig } = require('@expo/metro-config');
 
 const defaultConfig = getDefaultConfig(__dirname);
 
-const config = {
-  resolver: {
-    alias: {
-      'react-native': 'react-native-web',
-    },
-    extensions: [
-      '.web.tsx',
-      '.web.ts',
-      '.web.jsx',
-      '.web.js',
-      ...defaultConfig.resolver.extensions,
-    ],
-  },
+// React Native Web 지원을 위한 설정 추가
+defaultConfig.resolver.alias = {
+  'react-native': 'react-native-web',
+  ...defaultConfig.resolver.alias,
 };
 
-module.exports = mergeConfig(defaultConfig, config); 
+defaultConfig.resolver.extensions = [
+  '.web.tsx',
+  '.web.ts',
+  '.web.jsx',
+  '.web.js',
+  ...defaultConfig.resolver.extensions,
+];
+
+module.exports = defaultConfig; 
