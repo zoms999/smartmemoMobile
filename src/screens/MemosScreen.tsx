@@ -71,9 +71,9 @@ export default function MemosScreen() {
     const query = searchQuery.toLowerCase();
     return sortedMemos.filter(
       memo =>
-        memo.title.toLowerCase().includes(query) ||
-        memo.content.toLowerCase().includes(query) ||
-        memo.tags.some(tag => tag.toLowerCase().includes(query))
+        (memo.title && memo.title.toLowerCase().includes(query)) ||
+        (memo.content && memo.content.toLowerCase().includes(query)) ||
+        (memo.tags && memo.tags.some(tag => tag.toLowerCase().includes(query)))
     );
   }, [memos, searchQuery]);
 
@@ -142,7 +142,7 @@ export default function MemosScreen() {
               <IconButton icon="pin" size={18} iconColor={theme.colors.primary} style={styles.pinIcon} />
             )}
             <Text variant="titleMedium" style={[styles.memoTitle, { color: textColor }]} numberOfLines={1}>
-              {item.title || item.content.substring(0, 30) + (item.content.length > 30 ? '...' : '')}
+              {item.title || (item.content ? item.content.substring(0, 30) + (item.content.length > 30 ? '...' : '') : '내용 없음')}
             </Text>
             <Menu
               visible={menuVisibleId === item.id}
@@ -176,7 +176,7 @@ export default function MemosScreen() {
             </Menu>
           </View>
 
-          {item.title && (
+          {item.title && item.content && (
             <Text
               variant="bodyMedium"
               numberOfLines={4}
