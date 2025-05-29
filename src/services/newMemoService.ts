@@ -84,14 +84,7 @@ export const newMemoService = {
   async getMemos(userId: string) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
@@ -101,14 +94,7 @@ export const newMemoService = {
   async getMemo(id: number) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('id', id)
       .single();
     
@@ -133,14 +119,7 @@ export const newMemoService = {
         images: memo.images || [],
         user_id: memo.user_id,
       }])
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .single();
     
     return { data, error };
@@ -156,14 +135,7 @@ export const newMemoService = {
       .from('memos')
       .update(updates)
       .eq('id', id)
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .single();
     
     return { data, error };
@@ -182,14 +154,7 @@ export const newMemoService = {
   async searchMemos(userId: string, query: string) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .textSearch('text', query)
       .order('created_at', { ascending: false });
@@ -201,14 +166,7 @@ export const newMemoService = {
   async getMemosByCategory(userId: string, categoryId: number) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .eq('category_id', categoryId)
       .order('created_at', { ascending: false });
@@ -220,14 +178,7 @@ export const newMemoService = {
   async getMemosByPriority(userId: string, priority: number) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .eq('priority', priority)
       .order('created_at', { ascending: false });
@@ -239,14 +190,7 @@ export const newMemoService = {
   async getWidgetMemos(userId: string) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .eq('is_widget', true)
       .order('created_at', { ascending: false });
@@ -258,14 +202,7 @@ export const newMemoService = {
   async getMemosWithReminders(userId: string) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .not('reminder', 'is', null)
       .order('reminder', { ascending: true });
@@ -277,14 +214,7 @@ export const newMemoService = {
   async getMemosByTag(userId: string, tag: string) {
     const { data, error } = await supabase
       .from('memos')
-      .select(`
-        *,
-        categories (
-          id,
-          name,
-          color
-        )
-      `)
+      .select('*')  // 임시로 categories 조인 제거
       .eq('user_id', userId)
       .contains('tags', [tag])
       .order('created_at', { ascending: false });
