@@ -30,6 +30,7 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, CreateMemoRequest, Category, Tag } from '../types';
 import type { RootState, AppDispatch } from '../store';
@@ -72,6 +73,8 @@ export default function CreateMemoScreen() {
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [isWidget, setIsWidget] = useState(false);
   const [reminder, setReminder] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -277,6 +280,27 @@ export default function CreateMemoScreen() {
   const handleDateSelection = () => {
     console.log('날짜 설정 버튼 클릭');
     
+    Alert.alert(
+      '📅 날짜 선택',
+      '어떤 방식으로 날짜를 선택하시겠어요?',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: '📱 달력에서 선택',
+          onPress: () => setShowDatePicker(true)
+        },
+        {
+          text: '⚡ 빠른 선택',
+          onPress: showQuickDateOptions
+        }
+      ]
+    );
+  };
+
+  const showQuickDateOptions = () => {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
@@ -284,7 +308,7 @@ export default function CreateMemoScreen() {
     nextWeek.setDate(today.getDate() + 7);
     
     Alert.alert(
-      '📅 날짜 선택',
+      '⚡ 빠른 날짜 선택',
       '언제 알림을 받으시겠어요?',
       [
         {
@@ -324,6 +348,27 @@ export default function CreateMemoScreen() {
     
     Alert.alert(
       '🕐 시간 선택',
+      '어떤 방식으로 시간을 선택하시겠어요?',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: '🕐 시계에서 선택',
+          onPress: () => setShowTimePicker(true)
+        },
+        {
+          text: '⚡ 빠른 선택',
+          onPress: showQuickTimeOptions
+        }
+      ]
+    );
+  };
+
+  const showQuickTimeOptions = () => {
+    Alert.alert(
+      '⚡ 빠른 시간 선택',
       '몇 시에 알림을 받으시겠어요?',
       [
         {
@@ -363,6 +408,50 @@ export default function CreateMemoScreen() {
     const newDate = new Date(date);
     newDate.setHours(hours, minutes, 0, 0);
     setReminder(newDate);
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    console.log('onDateChange 호출:', { event, selectedDate });
+    setShowDatePicker(false);
+    if (selectedDate) {
+      if (reminder) {
+        // 기존 시간 유지하고 날짜만 변경
+        const newDate = new Date(selectedDate);
+        newDate.setHours(reminder.getHours());
+        newDate.setMinutes(reminder.getMinutes());
+        console.log('기존 시간 유지한 새 날짜:', newDate);
+        setReminder(newDate);
+      } else {
+        // 새로운 날짜 설정 (오늘 9시로 기본 설정)
+        const newDate = new Date(selectedDate);
+        newDate.setHours(9, 0, 0, 0);
+        console.log('새 날짜 (9시):', newDate);
+        setReminder(newDate);
+      }
+    }
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    console.log('onTimeChange 호출:', { event, selectedTime });
+    setShowTimePicker(false);
+    if (selectedTime) {
+      if (reminder) {
+        // 기존 날짜 유지하고 시간만 변경
+        const newTime = new Date(reminder);
+        newTime.setHours(selectedTime.getHours());
+        newTime.setMinutes(selectedTime.getMinutes());
+        console.log('기존 날짜 유지한 새 시간:', newTime);
+        setReminder(newTime);
+      } else {
+        // 날짜가 없으면 오늘 날짜에 선택한 시간 설정
+        const today = new Date();
+        today.setHours(selectedTime.getHours());
+        today.setMinutes(selectedTime.getMinutes());
+        today.setSeconds(0, 0);
+        console.log('오늘 날짜에 선택한 시간:', today);
+        setReminder(today);
+      }
+    }
   };
 
   const formatDateTime = (date: Date) => {
@@ -808,6 +897,27 @@ export default function CreateMemoScreen() {
           </Card.Content>
         </Card>
       </ScrollView>
+
+      {/* 날짜/시간 선택기 */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={reminder || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'default' : 'default'}
+          onChange={onDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+      
+      {showTimePicker && (
+        <DateTimePicker
+          value={reminder || new Date()}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'default' : 'default'}
+          onChange={onTimeChange}
+          is24Hour={false}
+        />
+      )}
 
       {/* 로딩 오버레이 */}
       {isLoading && (
