@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,6 +6,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
+  Image,
 } from 'react-native';
 import {
   Text,
@@ -17,14 +19,19 @@ import {
   Appbar,
   Snackbar,
   ActivityIndicator,
-  SegmentedButtons,
+  RadioButton,
+  Switch,
+  IconButton,
+  Menu,
+  Divider,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../types';
+import type { RootStackParamList, CreateMemoRequest, Category } from '../types';
 import type { RootState, AppDispatch } from '../store';
-import { createMemo } from '../store/slices/memosSlice';
+import { newMemoService } from '../services/newMemoService';
 
 type CreateMemoScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -40,36 +47,72 @@ const MEMO_COLORS = [
   '#A5D6A7', // 초록색
   '#FFCDD2', // 빨간색
   '#D7CCC8', // 갈색
+  '#F5F5F5', // 회색
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: 'low', label: '낮음' },
-  { value: 'medium', label: '보통' },
-  { value: 'high', label: '높음' },
+  { value: 0, label: '낮음', color: '#4CAF50', icon: 'arrow-down' },
+  { value: 1, label: '보통', color: '#FF9800', icon: 'minus' },
+  { value: 2, label: '높음', color: '#F44336', icon: 'arrow-up' },
 ];
 
 export default function CreateMemoScreen() {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [text, setText] = useState('');
   const [selectedColor, setSelectedColor] = useState(MEMO_COLORS[0]);
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [priority, setPriority] = useState<number>(1);
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isWidget, setIsWidget] = useState(false);
+  const [reminder, setReminder] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const theme = useTheme();
   const navigation = useNavigation<CreateMemoScreenNavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
   
   const { user } = useSelector((state: RootState) => state.auth);
-  const { isLoading } = useSelector((state: RootState) => state.memos);
+
+  // 컴포넌트 마운트 시 카테고리 목록 가져오기
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const { data, error } = await newMemoService.getCategories();
+      if (error) {
+        console.error('카테고리 로드 오류:', error);
+        setSnackbarMessage('카테고리를 불러오는데 실패했습니다.');
+        setShowSnackbar(true);
+      } else if (data) {
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('카테고리 로드 예외:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
 
   const handleAddTag = () => {
     const trimmedTag = tagInput.trim();
-    if (trimmedTag && !tags.includes(trimmedTag)) {
+    if (trimmedTag && !tags.includes(trimmedTag) && tags.length < 5) {
       setTags([...tags, trimmedTag]);
       setTagInput('');
+    } else if (tags.length >= 5) {
+      setSnackbarMessage('태그는 최대 5개까지 추가할 수 있습니다.');
+      setShowSnackbar(true);
     }
   };
 
@@ -77,15 +120,18 @@ export default function CreateMemoScreen() {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleSaveMemo = async () => {
-    if (!title.trim()) {
-      setSnackbarMessage('제목을 입력해주세요.');
-      setShowSnackbar(true);
-      return;
-    }
+  const handleAddImage = () => {
+    // TODO: 이미지 선택 기능 구현 (react-native-image-picker 등 사용)
+    Alert.alert('이미지 추가', '이미지 추가 기능은 추후 구현 예정입니다.');
+  };
 
-    if (!content.trim()) {
-      setSnackbarMessage('내용을 입력해주세요.');
+  const handleRemoveImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  const handleSaveMemo = async () => {
+    if (!text.trim()) {
+      setSnackbarMessage('메모 내용을 입력해주세요.');
       setShowSnackbar(true);
       return;
     }
@@ -96,35 +142,47 @@ export default function CreateMemoScreen() {
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      const memoData = {
-        user_id: user.id,
-        title: title.trim(),
-        content: content.trim(),
-        color: selectedColor,
-        tags,
+      const memoData: CreateMemoRequest = {
+        text: text.trim(),
+        is_widget: isWidget,
+        category_id: selectedCategory?.id,
         priority,
-        is_pinned: false,
+        tags,
+        color: selectedColor,
+        reminder: reminder?.toISOString(),
+        images,
+        user_id: user.id,
       };
 
-      const result = await dispatch(createMemo(memoData));
+      const { data, error } = await newMemoService.createMemo(memoData);
       
-      if (createMemo.fulfilled.match(result)) {
-        // 성공적으로 생성되면 이전 화면으로 돌아가기
-        navigation.goBack();
-      } else {
+      if (error) {
+        console.error('메모 생성 오류:', error);
         setSnackbarMessage('메모 저장에 실패했습니다.');
         setShowSnackbar(true);
+      } else {
+        setSnackbarMessage('메모가 성공적으로 저장되었습니다!');
+        setShowSnackbar(true);
+        
+        setTimeout(() => {
+          navigation.goBack();
+        }, 1500);
       }
+      
     } catch (error) {
-      console.error('메모 생성 오류:', error);
-      setSnackbarMessage('메모 저장 중 오류가 발생했습니다.');
+      console.error('메모 생성 예외:', error);
+      setSnackbarMessage('메모 저장 중 예상치 못한 오류가 발생했습니다.');
       setShowSnackbar(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleCancel = () => {
-    if (title.trim() || content.trim() || tags.length > 0) {
+    if (text.trim() || tags.length > 0 || selectedCategory || reminder) {
       Alert.alert(
         '작성 취소',
         '작성 중인 내용이 있습니다. 정말 취소하시겠습니까?',
@@ -136,6 +194,39 @@ export default function CreateMemoScreen() {
     } else {
       navigation.goBack();
     }
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      if (reminder) {
+        // 기존 시간 유지하고 날짜만 변경
+        const newDate = new Date(selectedDate);
+        newDate.setHours(reminder.getHours());
+        newDate.setMinutes(reminder.getMinutes());
+        setReminder(newDate);
+      } else {
+        // 새로운 날짜 설정 (현재 시간)
+        setReminder(selectedDate);
+      }
+    }
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(false);
+    if (selectedTime && reminder) {
+      const newTime = new Date(reminder);
+      newTime.setHours(selectedTime.getHours());
+      newTime.setMinutes(selectedTime.getMinutes());
+      setReminder(newTime);
+    }
+  };
+
+  const formatDateTime = (date: Date) => {
+    return `${date.toLocaleDateString('ko-KR')} ${date.toLocaleTimeString('ko-KR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })}`;
   };
 
   return (
@@ -154,64 +245,97 @@ export default function CreateMemoScreen() {
       </Appbar.Header>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 제목 입력 */}
+        {/* 메모 내용 입력 */}
         <Card style={styles.section}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              제목
+              메모 내용
             </Text>
             <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="메모 제목을 입력하세요"
-              mode="outlined"
-              style={styles.titleInput}
-              maxLength={100}
-            />
-          </Card.Content>
-        </Card>
-
-        {/* 내용 입력 */}
-        <Card style={styles.section}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              내용
-            </Text>
-            <TextInput
-              value={content}
-              onChangeText={setContent}
-              placeholder="메모 내용을 입력하세요"
+              value={text}
+              onChangeText={setText}
+              placeholder="메모를 입력하세요..."
               mode="outlined"
               multiline
-              numberOfLines={8}
-              style={styles.contentInput}
+              numberOfLines={6}
+              style={styles.textInput}
               maxLength={1000}
             />
+            <Text style={styles.characterCount}>
+              {text.length}/1000
+            </Text>
           </Card.Content>
         </Card>
 
-        {/* 색상 선택 */}
+        {/* 카테고리 선택 */}
         <Card style={styles.section}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              색상
+              카테고리
             </Text>
-            <View style={styles.colorContainer}>
-              {MEMO_COLORS.map((color) => (
-                <Button
-                  key={color}
-                  mode={selectedColor === color ? 'contained' : 'outlined'}
-                  onPress={() => setSelectedColor(color)}
-                  style={[
-                    styles.colorButton,
-                    { backgroundColor: color }
-                  ]}
-                  contentStyle={styles.colorButtonContent}
-                >
-                  {selectedColor === color ? '✓' : ''}
-                </Button>
-              ))}
-            </View>
+            {categoriesLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" />
+                <Text style={{ marginLeft: 8 }}>카테고리 로딩 중...</Text>
+              </View>
+            ) : (
+              <Menu
+                visible={categoryMenuVisible}
+                onDismiss={() => setCategoryMenuVisible(false)}
+                anchor={
+                  <TouchableOpacity
+                    style={styles.categorySelector}
+                    onPress={() => setCategoryMenuVisible(true)}
+                  >
+                    <View style={styles.categoryDisplay}>
+                      {selectedCategory ? (
+                        <>
+                          <View 
+                            style={[
+                              styles.categoryColorDot, 
+                              { backgroundColor: selectedCategory.color }
+                            ]} 
+                          />
+                          <Text>{selectedCategory.name}</Text>
+                        </>
+                      ) : (
+                        <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                          카테고리 선택
+                        </Text>
+                      )}
+                    </View>
+                    <IconButton icon="chevron-down" size={20} />
+                  </TouchableOpacity>
+                }
+              >
+                <Menu.Item
+                  onPress={() => {
+                    setSelectedCategory(null);
+                    setCategoryMenuVisible(false);
+                  }}
+                  title="카테고리 없음"
+                />
+                <Divider />
+                {categories.map((category) => (
+                  <Menu.Item
+                    key={category.id}
+                    onPress={() => {
+                      setSelectedCategory(category);
+                      setCategoryMenuVisible(false);
+                    }}
+                    title={category.name}
+                    leadingIcon={() => (
+                      <View 
+                        style={[
+                          styles.categoryColorDot, 
+                          { backgroundColor: category.color }
+                        ]} 
+                      />
+                    )}
+                  />
+                ))}
+              </Menu>
+            )}
           </Card.Content>
         </Card>
 
@@ -221,12 +345,101 @@ export default function CreateMemoScreen() {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               우선순위
             </Text>
-            <SegmentedButtons
-              value={priority}
-              onValueChange={(value) => setPriority(value as 'low' | 'medium' | 'high')}
-              buttons={PRIORITY_OPTIONS}
-              style={styles.priorityButtons}
-            />
+            <View style={styles.priorityContainer}>
+              {PRIORITY_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.priorityItem,
+                    priority === option.value && styles.priorityItemSelected,
+                    { borderColor: option.color }
+                  ]}
+                  onPress={() => setPriority(option.value)}
+                >
+                  <IconButton 
+                    icon={option.icon} 
+                    iconColor={option.color} 
+                    size={20}
+                  />
+                  <Text style={[
+                    styles.priorityLabel,
+                    priority === option.value && { color: option.color }
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* 색상 선택 */}
+        <Card style={styles.section}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.sectionTitle}>
+              메모 색상
+            </Text>
+            <View style={styles.colorContainer}>
+              {MEMO_COLORS.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorButton,
+                    { backgroundColor: color },
+                    selectedColor === color && styles.colorButtonSelected
+                  ]}
+                  onPress={() => setSelectedColor(color)}
+                >
+                  {selectedColor === color && (
+                    <IconButton icon="check" iconColor="#333" size={20} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* 리마인더 설정 */}
+        <Card style={styles.section}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.sectionTitle}>
+              리마인더
+            </Text>
+            <View style={styles.reminderContainer}>
+              {reminder ? (
+                <View style={styles.reminderDisplay}>
+                  <Text variant="bodyMedium">
+                    {formatDateTime(reminder)}
+                  </Text>
+                  <IconButton
+                    icon="close"
+                    size={16}
+                    onPress={() => setReminder(null)}
+                  />
+                </View>
+              ) : (
+                <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                  리마인더 없음
+                </Text>
+              )}
+            </View>
+            <View style={styles.reminderButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => setShowDatePicker(true)}
+                style={styles.reminderButton}
+              >
+                날짜 설정
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => setShowTimePicker(true)}
+                disabled={!reminder}
+                style={styles.reminderButton}
+              >
+                시간 설정
+              </Button>
+            </View>
           </Card.Content>
         </Card>
 
@@ -234,13 +447,13 @@ export default function CreateMemoScreen() {
         <Card style={styles.section}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              태그
+              태그 ({tags.length}/5)
             </Text>
             <View style={styles.tagInputContainer}>
               <TextInput
                 value={tagInput}
                 onChangeText={setTagInput}
-                placeholder="태그를 입력하고 추가 버튼을 누르세요"
+                placeholder="태그를 입력하세요"
                 mode="outlined"
                 style={styles.tagInput}
                 onSubmitEditing={handleAddTag}
@@ -249,7 +462,7 @@ export default function CreateMemoScreen() {
               <Button
                 mode="contained"
                 onPress={handleAddTag}
-                disabled={!tagInput.trim()}
+                disabled={!tagInput.trim() || tags.length >= 5}
                 style={styles.addTagButton}
               >
                 추가
@@ -273,6 +486,24 @@ export default function CreateMemoScreen() {
           </Card.Content>
         </Card>
 
+        {/* 위젯 설정 */}
+        <Card style={styles.section}>
+          <Card.Content>
+            <View style={styles.switchContainer}>
+              <View style={styles.switchContent}>
+                <Text variant="titleMedium">위젯으로 표시</Text>
+                <Text variant="bodySmall" style={{ opacity: 0.7 }}>
+                  홈 화면에서 바로 확인할 수 있습니다
+                </Text>
+              </View>
+              <Switch
+                value={isWidget}
+                onValueChange={setIsWidget}
+              />
+            </View>
+          </Card.Content>
+        </Card>
+
         {/* 미리보기 */}
         <Card style={[styles.section, styles.previewSection]}>
           <Card.Content>
@@ -286,12 +517,31 @@ export default function CreateMemoScreen() {
               ]}
             >
               <Card.Content>
-                <Text variant="titleMedium" style={styles.previewTitle}>
-                  {title || '제목 없음'}
-                </Text>
+                <View style={styles.previewHeader}>
+                  {selectedCategory && (
+                    <View style={styles.previewCategory}>
+                      <View 
+                        style={[
+                          styles.categoryColorDot, 
+                          { backgroundColor: selectedCategory.color }
+                        ]} 
+                      />
+                      <Text variant="bodySmall">{selectedCategory.name}</Text>
+                    </View>
+                  )}
+                  <View style={styles.previewPriority}>
+                    <IconButton
+                      icon={PRIORITY_OPTIONS[priority].icon}
+                      iconColor={PRIORITY_OPTIONS[priority].color}
+                      size={16}
+                    />
+                  </View>
+                </View>
+                
                 <Text variant="bodyMedium" style={styles.previewContent}>
-                  {content || '내용 없음'}
+                  {text || '메모 내용이 여기에 표시됩니다...'}
                 </Text>
+                
                 {tags.length > 0 && (
                   <View style={styles.previewTagsContainer}>
                     {tags.map((tag) => (
@@ -306,12 +556,41 @@ export default function CreateMemoScreen() {
                     ))}
                   </View>
                 )}
+                
+                {reminder && (
+                  <View style={styles.previewReminder}>
+                    <IconButton icon="bell" size={16} />
+                    <Text variant="bodySmall">
+                      {formatDateTime(reminder)}
+                    </Text>
+                  </View>
+                )}
               </Card.Content>
             </Card>
           </Card.Content>
         </Card>
       </ScrollView>
 
+      {/* 날짜/시간 선택기 */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={reminder || new Date()}
+          mode="date"
+          display="default"
+          onChange={onDateChange}
+        />
+      )}
+      
+      {showTimePicker && (
+        <DateTimePicker
+          value={reminder || new Date()}
+          mode="time"
+          display="default"
+          onChange={onTimeChange}
+        />
+      )}
+
+      {/* 로딩 오버레이 */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" />
@@ -346,30 +625,98 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontWeight: 'bold',
   },
-  titleInput: {
-    backgroundColor: 'white',
-  },
-  contentInput: {
+  textInput: {
     backgroundColor: 'white',
     textAlignVertical: 'top',
+  },
+  characterCount: {
+    textAlign: 'right',
+    marginTop: 4,
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  categorySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    backgroundColor: 'white',
+  },
+  categoryDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  priorityItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: 'white',
+  },
+  priorityItemSelected: {
+    borderWidth: 2,
+    backgroundColor: '#F5F5F5',
+  },
+  priorityLabel: {
+    fontSize: 12,
+    marginTop: 4,
   },
   colorContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
   },
   colorButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    margin: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  colorButtonContent: {
-    width: 50,
-    height: 50,
+  colorButtonSelected: {
+    borderColor: '#333',
   },
-  priorityButtons: {
-    marginTop: 8,
+  reminderContainer: {
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  reminderDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F5F5',
+    padding: 8,
+    borderRadius: 8,
+  },
+  reminderButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  reminderButton: {
+    flex: 1,
   },
   tagInputContainer: {
     flexDirection: 'row',
@@ -392,15 +739,33 @@ const styles = StyleSheet.create({
   tag: {
     marginBottom: 4,
   },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  switchContent: {
+    flex: 1,
+  },
   previewSection: {
     marginBottom: 32,
   },
   previewCard: {
     marginTop: 8,
   },
-  previewTitle: {
-    fontWeight: 'bold',
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
+  },
+  previewCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  previewPriority: {
+    marginRight: -8,
   },
   previewContent: {
     marginBottom: 12,
@@ -410,9 +775,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
+    marginBottom: 8,
   },
   previewTag: {
     height: 24,
+  },
+  previewReminder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
   },
   loadingOverlay: {
     position: 'absolute',

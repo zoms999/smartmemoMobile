@@ -16,7 +16,38 @@ export interface User {
   };
 }
 
-// 스티커 메모 관련 타입
+// 카테고리 관련 타입
+export interface Category {
+  id: number;
+  name: string;
+  color: string;
+}
+
+// 메모 관련 타입 (새 스키마에 맞춰 수정)
+export interface Memo {
+  id: number;
+  text: string;
+  is_widget: boolean;
+  category_id?: number;
+  priority: number; // 0: 낮음, 1: 보통, 2: 높음
+  tags: string[];
+  color?: string;
+  reminder?: string;
+  images: string[]; // 이미지 URL 배열
+  created_at: string;
+  updated_at: string;
+  widget_position?: {
+    x: number;
+    y: number;
+  };
+  widget_size?: {
+    width: number;
+    height: number;
+  };
+  user_id: string;
+}
+
+// 스티커 메모 관련 타입 (기존 호환성을 위해 유지)
 export interface StickerMemo {
   id: string;
   user_id: string;
@@ -94,4 +125,17 @@ export interface CalendarState {
   selectedDate: string;
   isLoading: boolean;
   error: string | null;
+}
+
+// 새 메모 생성을 위한 타입
+export interface CreateMemoRequest {
+  text: string;
+  is_widget?: boolean;
+  category_id?: number;
+  priority: number;
+  tags: string[];
+  color?: string;
+  reminder?: string;
+  images?: string[];
+  user_id: string;
 } 
