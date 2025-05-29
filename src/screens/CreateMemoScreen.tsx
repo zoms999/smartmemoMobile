@@ -278,6 +278,7 @@ export default function CreateMemoScreen() {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
+    console.log('onDateChange 호출:', { event, selectedDate });
     setShowDatePicker(false);
     if (selectedDate) {
       if (reminder) {
@@ -285,29 +286,61 @@ export default function CreateMemoScreen() {
         const newDate = new Date(selectedDate);
         newDate.setHours(reminder.getHours());
         newDate.setMinutes(reminder.getMinutes());
+        console.log('기존 시간 유지한 새 날짜:', newDate);
         setReminder(newDate);
       } else {
-        // 새로운 날짜 설정 (현재 시간)
-        setReminder(selectedDate);
+        // 새로운 날짜 설정 (오늘 9시로 기본 설정)
+        const newDate = new Date(selectedDate);
+        newDate.setHours(9, 0, 0, 0); // 기본 시간을 오전 9시로 설정
+        console.log('새 날짜 (9시):', newDate);
+        setReminder(newDate);
       }
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
+    console.log('onTimeChange 호출:', { event, selectedTime });
     setShowTimePicker(false);
-    if (selectedTime && reminder) {
-      const newTime = new Date(reminder);
-      newTime.setHours(selectedTime.getHours());
-      newTime.setMinutes(selectedTime.getMinutes());
-      setReminder(newTime);
+    if (selectedTime) {
+      if (reminder) {
+        // 기존 날짜 유지하고 시간만 변경
+        const newTime = new Date(reminder);
+        newTime.setHours(selectedTime.getHours());
+        newTime.setMinutes(selectedTime.getMinutes());
+        console.log('기존 날짜 유지한 새 시간:', newTime);
+        setReminder(newTime);
+      } else {
+        // 날짜가 없으면 오늘 날짜에 선택한 시간 설정
+        const today = new Date();
+        today.setHours(selectedTime.getHours());
+        today.setMinutes(selectedTime.getMinutes());
+        today.setSeconds(0, 0);
+        console.log('오늘 날짜에 선택한 시간:', today);
+        setReminder(today);
+      }
     }
   };
 
   const formatDateTime = (date: Date) => {
-    return `${date.toLocaleDateString('ko-KR')} ${date.toLocaleTimeString('ko-KR', { 
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    const dateStr = date.toLocaleDateString('ko-KR');
+    const timeStr = date.toLocaleTimeString('ko-KR', { 
       hour: '2-digit', 
-      minute: '2-digit' 
-    })}`;
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    // 오늘, 내일 표시 개선
+    if (date.toDateString() === today.toDateString()) {
+      return `오늘 ${timeStr}`;
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return `내일 ${timeStr}`;
+    } else {
+      return `${dateStr} ${timeStr}`;
+    }
   };
 
   const renderTagSuggestionItem = ({ item }: { item: Tag }) => (
@@ -517,15 +550,20 @@ export default function CreateMemoScreen() {
             <View style={styles.reminderButtons}>
               <Button
                 mode="outlined"
-                onPress={() => setShowDatePicker(true)}
+                onPress={() => {
+                  console.log('날짜 설정 버튼 클릭');
+                  setShowDatePicker(true);
+                }}
                 style={styles.reminderButton}
               >
                 날짜 설정
               </Button>
               <Button
                 mode="outlined"
-                onPress={() => setShowTimePicker(true)}
-                disabled={!reminder}
+                onPress={() => {
+                  console.log('시간 설정 버튼 클릭');
+                  setShowTimePicker(true);
+                }}
                 style={styles.reminderButton}
               >
                 시간 설정
@@ -725,8 +763,9 @@ export default function CreateMemoScreen() {
         <DateTimePicker
           value={reminder || new Date()}
           mode="date"
-          display="default"
+          display={Platform.OS === 'ios' ? 'default' : 'default'}
           onChange={onDateChange}
+          minimumDate={new Date()} // 오늘 이후 날짜만 선택 가능
         />
       )}
       
@@ -734,8 +773,9 @@ export default function CreateMemoScreen() {
         <DateTimePicker
           value={reminder || new Date()}
           mode="time"
-          display="default"
+          display={Platform.OS === 'ios' ? 'default' : 'default'}
           onChange={onTimeChange}
+          is24Hour={false} // 12시간 형식 사용
         />
       )}
 
