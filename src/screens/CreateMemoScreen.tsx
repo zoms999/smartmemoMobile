@@ -133,8 +133,12 @@ export default function CreateMemoScreen() {
         console.error('전체 태그 로드 오류:', allTagsError);
       } else if (allTags) {
         setAvailableTags(allTags);
+        // 임시: RPC 함수 대신 처음 6개 태그를 인기 태그로 사용
+        setPopularTags(allTags.slice(0, 6));
       }
 
+      // TODO: RPC 함수 설정 후 아래 코드 활성화
+      /*
       // 2. 인기 태그 로드 (RPC 함수 사용, 실패 시 일반 태그 사용)
       const { data: popular, error: popularError } = await newMemoService.getPopularTags(6);
       if (!popularError && popular) {
@@ -143,6 +147,7 @@ export default function CreateMemoScreen() {
         // RPC 실패 시 전체 태그에서 처음 6개 사용
         setPopularTags(allTags.slice(0, 6));
       }
+      */
     } catch (error) {
       console.error('태그 로드 예외:', error);
     } finally {
