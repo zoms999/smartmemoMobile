@@ -6,9 +6,7 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
-    "web-dev": "webpack serve --mode development",
-    "web-build": "webpack --mode production"
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -38,10 +36,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.27.3",
-    "@babel/plugin-proposal-class-properties": "^7.18.6",
-    "@babel/plugin-proposal-private-methods": "^7.18.6",
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
     "@react-native-community/cli": "^18.0.0",

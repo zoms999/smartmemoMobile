@@ -124,7 +124,7 @@ export default function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
         <>
-          <Stack.Screen name="Home" component={MainTabNavigator} />
+        <Stack.Screen name="Home" component={MainTabNavigator} />
           <Stack.Screen name="CreateMemo" component={CreateMemoScreen} />
         </>
       ) : (
