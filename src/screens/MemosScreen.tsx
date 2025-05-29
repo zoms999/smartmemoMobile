@@ -70,10 +70,17 @@ export default function MemosScreen() {
     }
     const query = searchQuery.toLowerCase();
     return sortedMemos.filter(
-      memo =>
-        (memo.title && memo.title.toLowerCase().includes(query)) ||
-        (memo.content && memo.content.toLowerCase().includes(query)) ||
-        (memo.tags && memo.tags.some(tag => tag.toLowerCase().includes(query)))
+      memo => {
+        const memoData = memo as any;
+        const content = memoData.text || memoData.content || '';
+        const title = memoData.title || '';
+        
+        return (
+          (title && title.toLowerCase().includes(query)) ||
+          (content && content.toLowerCase().includes(query)) ||
+          (memo.tags && memo.tags.some(tag => tag.toLowerCase().includes(query)))
+        );
+      }
     );
   }, [memos, searchQuery]);
 
@@ -131,6 +138,11 @@ export default function MemosScreen() {
     const isDarkBackground = theme.dark || ['#333333', '#000000'].includes(cardBackgroundColor.toLowerCase());
     const textColor = isDarkBackground ? theme.colors.onSurface : '#333';
 
+    // 실제 데이터 구조에 맞게 필드 매핑
+    const memoData = item as any; // 임시로 any 사용
+    const content = memoData.text || memoData.content || '';
+    const title = memoData.title || '';
+
     return (
       <Card
         style={[styles.memoCard, { backgroundColor: cardBackgroundColor }]}
@@ -142,7 +154,7 @@ export default function MemosScreen() {
               <IconButton icon="pin" size={18} iconColor={theme.colors.primary} style={styles.pinIcon} />
             )}
             <Text variant="titleMedium" style={[styles.memoTitle, { color: textColor }]} numberOfLines={1}>
-              {item.title || (item.content ? item.content.substring(0, 30) + (item.content.length > 30 ? '...' : '') : '내용 없음')}
+              {title || (content ? content.substring(0, 30) + (content.length > 30 ? '...' : '') : '내용 없음')}
             </Text>
             <Menu
               visible={menuVisibleId === item.id}
@@ -176,13 +188,13 @@ export default function MemosScreen() {
             </Menu>
           </View>
 
-          {item.title && item.content && (
+          {content && (
             <Text
               variant="bodyMedium"
               numberOfLines={4}
               style={[styles.memoContent, { color: textColor }]}
             >
-              {item.content}
+              {content}
             </Text>
           )}
 
