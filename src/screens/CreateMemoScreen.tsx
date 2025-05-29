@@ -30,7 +30,6 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, CreateMemoRequest, Category, Tag } from '../types';
 import type { RootState, AppDispatch } from '../store';
@@ -73,8 +72,6 @@ export default function CreateMemoScreen() {
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [isWidget, setIsWidget] = useState(false);
   const [reminder, setReminder] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -277,48 +274,95 @@ export default function CreateMemoScreen() {
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    console.log('onDateChange 호출:', { event, selectedDate });
-    setShowDatePicker(false);
-    if (selectedDate) {
-      if (reminder) {
-        // 기존 시간 유지하고 날짜만 변경
-        const newDate = new Date(selectedDate);
-        newDate.setHours(reminder.getHours());
-        newDate.setMinutes(reminder.getMinutes());
-        console.log('기존 시간 유지한 새 날짜:', newDate);
-        setReminder(newDate);
-      } else {
-        // 새로운 날짜 설정 (오늘 9시로 기본 설정)
-        const newDate = new Date(selectedDate);
-        newDate.setHours(9, 0, 0, 0); // 기본 시간을 오전 9시로 설정
-        console.log('새 날짜 (9시):', newDate);
-        setReminder(newDate);
-      }
-    }
+  const handleDateSelection = () => {
+    console.log('날짜 설정 버튼 클릭');
+    
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+    
+    Alert.alert(
+      '📅 날짜 선택',
+      '언제 알림을 받으시겠어요?',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: `🕘 오늘 (${today.getMonth() + 1}월 ${today.getDate()}일)`,
+          onPress: () => {
+            const newDate = new Date(today);
+            newDate.setHours(reminder?.getHours() || 9, reminder?.getMinutes() || 0, 0, 0);
+            setReminder(newDate);
+          }
+        },
+        {
+          text: `🌅 내일 (${tomorrow.getMonth() + 1}월 ${tomorrow.getDate()}일)`,
+          onPress: () => {
+            const newDate = new Date(tomorrow);
+            newDate.setHours(reminder?.getHours() || 9, reminder?.getMinutes() || 0, 0, 0);
+            setReminder(newDate);
+          }
+        },
+        {
+          text: `📆 다음주 (${nextWeek.getMonth() + 1}월 ${nextWeek.getDate()}일)`,
+          onPress: () => {
+            const newDate = new Date(nextWeek);
+            newDate.setHours(reminder?.getHours() || 9, reminder?.getMinutes() || 0, 0, 0);
+            setReminder(newDate);
+          }
+        }
+      ]
+    );
   };
 
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    console.log('onTimeChange 호출:', { event, selectedTime });
-    setShowTimePicker(false);
-    if (selectedTime) {
-      if (reminder) {
-        // 기존 날짜 유지하고 시간만 변경
-        const newTime = new Date(reminder);
-        newTime.setHours(selectedTime.getHours());
-        newTime.setMinutes(selectedTime.getMinutes());
-        console.log('기존 날짜 유지한 새 시간:', newTime);
-        setReminder(newTime);
-      } else {
-        // 날짜가 없으면 오늘 날짜에 선택한 시간 설정
-        const today = new Date();
-        today.setHours(selectedTime.getHours());
-        today.setMinutes(selectedTime.getMinutes());
-        today.setSeconds(0, 0);
-        console.log('오늘 날짜에 선택한 시간:', today);
-        setReminder(today);
-      }
-    }
+  const handleTimeSelection = () => {
+    console.log('시간 설정 버튼 클릭');
+    
+    Alert.alert(
+      '🕐 시간 선택',
+      '몇 시에 알림을 받으시겠어요?',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: '🌅 오전 8:00',
+          onPress: () => setReminderTime(8, 0)
+        },
+        {
+          text: '☀️ 오전 9:00',
+          onPress: () => setReminderTime(9, 0)
+        },
+        {
+          text: '🕛 오후 12:00',
+          onPress: () => setReminderTime(12, 0)
+        },
+        {
+          text: '🍽️ 오후 1:00',
+          onPress: () => setReminderTime(13, 0)
+        },
+        {
+          text: '🌆 오후 6:00',
+          onPress: () => setReminderTime(18, 0)
+        },
+        {
+          text: '🌙 오후 9:00',
+          onPress: () => setReminderTime(21, 0)
+        }
+      ]
+    );
+  };
+
+  const setReminderTime = (hours: number, minutes: number) => {
+    const date = reminder || new Date();
+    const newDate = new Date(date);
+    newDate.setHours(hours, minutes, 0, 0);
+    setReminder(newDate);
   };
 
   const formatDateTime = (date: Date) => {
@@ -527,46 +571,53 @@ export default function CreateMemoScreen() {
         <Card style={styles.section}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              리마인더
+              📅 리마인더
             </Text>
             <View style={styles.reminderContainer}>
               {reminder ? (
                 <View style={styles.reminderDisplay}>
-                  <Text variant="bodyMedium">
-                    {formatDateTime(reminder)}
-                  </Text>
+                  <View style={styles.reminderInfo}>
+                    <Text variant="bodyMedium" style={styles.reminderText}>
+                      🔔 {formatDateTime(reminder)}
+                    </Text>
+                    <Text variant="bodySmall" style={styles.reminderSubtext}>
+                      설정된 시간에 알림을 받습니다
+                    </Text>
+                  </View>
                   <IconButton
                     icon="close"
-                    size={16}
+                    size={20}
                     onPress={() => setReminder(null)}
+                    iconColor="#666"
                   />
                 </View>
               ) : (
-                <Text style={{ color: theme.colors.onSurfaceVariant }}>
-                  리마인더 없음
-                </Text>
+                <View style={styles.noReminderContainer}>
+                  <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                    🔕 리마인더 없음
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+                    날짜와 시간을 설정하여 알림을 받으세요
+                  </Text>
+                </View>
               )}
             </View>
             <View style={styles.reminderButtons}>
               <Button
-                mode="outlined"
-                onPress={() => {
-                  console.log('날짜 설정 버튼 클릭');
-                  setShowDatePicker(true);
-                }}
+                mode="contained"
+                onPress={handleDateSelection}
                 style={styles.reminderButton}
+                icon="calendar"
               >
-                날짜 설정
+                날짜 선택
               </Button>
               <Button
-                mode="outlined"
-                onPress={() => {
-                  console.log('시간 설정 버튼 클릭');
-                  setShowTimePicker(true);
-                }}
+                mode="contained"
+                onPress={handleTimeSelection}
                 style={styles.reminderButton}
+                icon="clock"
               >
-                시간 설정
+                시간 선택
               </Button>
             </View>
           </Card.Content>
@@ -758,27 +809,6 @@ export default function CreateMemoScreen() {
         </Card>
       </ScrollView>
 
-      {/* 날짜/시간 선택기 */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={reminder || new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'default' : 'default'}
-          onChange={onDateChange}
-          minimumDate={new Date()} // 오늘 이후 날짜만 선택 가능
-        />
-      )}
-      
-      {showTimePicker && (
-        <DateTimePicker
-          value={reminder || new Date()}
-          mode="time"
-          display={Platform.OS === 'ios' ? 'default' : 'default'}
-          onChange={onTimeChange}
-          is24Hour={false} // 12시간 형식 사용
-        />
-      )}
-
       {/* 로딩 오버레이 */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
@@ -898,6 +928,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     padding: 8,
     borderRadius: 8,
+  },
+  reminderInfo: {
+    flex: 1,
+    paddingVertical: 4,
+  },
+  reminderText: {
+    fontWeight: 'bold',
+  },
+  reminderSubtext: {
+    opacity: 0.7,
+    marginTop: 2,
   },
   reminderButtons: {
     flexDirection: 'row',
@@ -1030,5 +1071,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: 'white',
     fontSize: 16,
+  },
+  noReminderContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: 16,
   },
 }); 
