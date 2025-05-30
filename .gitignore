@@ -39,3 +39,8 @@ yarn-error.*
 # 환경 변수 파일 제외
 .env
 .env.*
+
+# 민감한 설정 파일 제외
+app.json
+config/secrets.json
+*.secret.js
