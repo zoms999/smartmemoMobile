@@ -84,35 +84,62 @@ src/
 
 ### 설치 및 실행
 
-1. **의존성 설치**
+1. **저장소 복제**
+   ```bash
+   git clone https://github.com/zoms999/smartmemoMobile.git
+   cd smartmemoMobile
+   ```
+
+2. **의존성 설치**
    ```bash
    npm install
    ```
 
-2. **개발 서버 시작**
+3. **환경 변수 설정**
+   ```bash
+   # env.example을 복사하여 .env 파일 생성
+   cp env.example .env
+   
+   # .env 파일을 열고 실제 Supabase 값으로 업데이트
+   ```
+
+4. **개발 서버 시작**
    ```bash
    npx expo start
    ```
 
-3. **앱 실행**
+5. **앱 실행**
    - iOS: `i` 키를 눌러 iOS 시뮬레이터에서 실행
    - Android: `a` 키를 눌러 Android 에뮬레이터에서 실행
    - 실제 기기: Expo Go 앱을 설치하고 QR 코드 스캔
 
 ## 🔧 환경 설정
 
+⚠️ **보안 주의사항**: 이 프로젝트는 민감한 정보를 환경 변수로 관리합니다. `.env` 파일은 절대 Git에 커밋하지 마세요.
+
+### 환경 변수 설정
+
+1. **env.example 파일 복사**
+   ```bash
+   cp env.example .env
+   ```
+
+2. **.env 파일 수정**
+   ```env
+   # Supabase 설정
+   EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+   ```
+
 ### Supabase 설정
 1. [Supabase](https://supabase.com)에서 새 프로젝트 생성
-2. `src/services/supabase.ts` 파일에서 URL과 키 설정
-3. 데이터베이스 테이블 생성 (스키마는 추후 제공)
+2. 프로젝트 대시보드에서 API URL과 anon key 확인
+3. `.env` 파일에 실제 값 입력
+4. 데이터베이스 테이블 생성 (스키마는 추후 제공)
 
-### 환경 변수
-`.env.local` 파일을 생성하고 다음 변수들을 설정하세요:
-
-```env
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+### 앱 설정 파일
+- **app.config.js**: Expo 설정 파일 (환경 변수 참조)
+- **app.json**: ⚠️ 삭제됨 (보안상 민감한 정보 포함)
 
 ## 📱 현재 구현 상태
 
