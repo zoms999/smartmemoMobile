@@ -20,10 +20,14 @@ import {
   Menu,
   Divider,
   Avatar,
+  Dialog,
+  Portal,
+  Button,
 } from 'react-native-paper';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import { useFocusEffect } from '@react-navigation/native';
 import type { RootState, AppDispatch } from '../store';
 import { fetchMemos, clearError, deleteMemo, togglePinMemo } from '../store/slices/memosSlice';
 import type { StickerMemo, RootStackParamList } from '../types';
@@ -48,6 +52,8 @@ export default function MemosScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [menuVisibleId, setMenuVisibleId] = useState<string | null>(null);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [memoToDelete, setMemoToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('🔍 MemosScreen useEffect - user:', user?.id);
@@ -56,6 +62,17 @@ export default function MemosScreen() {
       dispatch(fetchMemos(user.id));
     }
   }, [dispatch, user?.id]);
+
+  // 화면이 포커스될 때마다 메모 새로고침
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🎯 MemosScreen 포커스 - 메모 새로고침');
+      if (user?.id) {
+        console.log('📱 fetchMemos 디스패치 - userId:', user.id);
+        dispatch(fetchMemos(user.id));
+      }
+    }, [dispatch, user?.id])
+  );
 
   const filteredMemos = useMemo(() => {
     // 메모 정렬: 고정된 메모 우선, 그 다음 최신 수정/생성 순
@@ -106,28 +123,34 @@ export default function MemosScreen() {
     }
     
     setMenuVisibleId(null);
-    Alert.alert(
-      '메모 삭제',
-      '이 메모를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
-      [
-        { 
-          text: '취소', 
-          style: 'cancel',
-          onPress: () => {
-            console.log('🚫 삭제 취소됨 - memoId:', memoId);
-          }
-        },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: () => {
-            console.log('🗑️ 삭제 확인됨 - Redux 액션 디스패치 시작:', memoId);
-            console.log('🔍 현재 사용자 ID:', user?.id);
-            dispatch(deleteMemo(memoId));
-          },
-        },
-      ]
-    );
+    
+    console.log('📋 Dialog 표시 준비...');
+    setMemoToDelete(memoId);
+    setDeleteDialogVisible(true);
+    console.log('✅ Dialog 상태 설정 완료 - visible:', true, 'memoId:', memoId);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!memoToDelete) {
+      console.error('❌ 삭제할 메모 ID가 없음');
+      return;
+    }
+    
+    console.log('🗑️ 삭제 확인됨 - Redux 액션 디스패치 시작:', memoToDelete);
+    console.log('🔍 현재 사용자 ID:', user?.id);
+    console.log('🚀 deleteMemo 액션 디스패치 중...');
+    
+    dispatch(deleteMemo(memoToDelete));
+    
+    // Dialog 닫기
+    setDeleteDialogVisible(false);
+    setMemoToDelete(null);
+  };
+
+  const handleDeleteCancel = () => {
+    console.log('🚫 삭제 취소됨 - memoId:', memoToDelete);
+    setDeleteDialogVisible(false);
+    setMemoToDelete(null);
   };
 
   const handleTogglePin = (memoId: string, currentPinStatus: boolean) => {
@@ -190,6 +213,7 @@ export default function MemosScreen() {
               onPress={() => handleDeleteMemo(item.id)}
               style={{ marginRight: 8 }}
             />
+           
             <Menu
               visible={menuVisibleId === item.id}
               onDismiss={() => setMenuVisibleId(null)}
@@ -341,6 +365,29 @@ export default function MemosScreen() {
       >
         <Text style={{color: theme.colors.onErrorContainer}}>{error}</Text>
       </Snackbar>
+
+      {/* 삭제 확인 Dialog */}
+      <Portal>
+        <Dialog visible={deleteDialogVisible} onDismiss={handleDeleteCancel}>
+          <Dialog.Title>메모 삭제</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              이 메모를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={handleDeleteCancel}>취소</Button>
+            <Button
+              mode="contained"
+              buttonColor={theme.colors.error}
+              textColor={theme.colors.onError}
+              onPress={handleDeleteConfirm}
+            >
+              삭제
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }

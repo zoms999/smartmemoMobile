@@ -59,13 +59,18 @@ export const updateMemo = createAsyncThunk(
 export const deleteMemo = createAsyncThunk(
   'memos/deleteMemo',
   async (id: string, { rejectWithValue }) => {
+    console.log('🎯 deleteMemo 액션 시작 - id:', id);
     try {
+      console.log('🔗 memoService.deleteMemo 호출 예정...');
       const { error } = await memoService.deleteMemo(id);
       if (error) {
+        console.error('❌ memoService에서 오류 반환:', error.message);
         return rejectWithValue(error.message);
       }
+      console.log('✅ memoService.deleteMemo 성공 - 반환값:', id);
       return id;
     } catch (error) {
+      console.error('❌ deleteMemo 액션에서 예외 발생:', error);
       return rejectWithValue('메모 삭제 중 오류가 발생했습니다.');
     }
   }

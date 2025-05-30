@@ -49,42 +49,48 @@ export const memoService = {
 
   // 메모 삭제
   async deleteMemo(id: string) {
-    console.log('🔗 memoService.deleteMemo 호출됨 - id:', id);
-    console.log('🔍 ID 타입:', typeof id, '| 값:', id, '| 길이:', id?.length);
+    console.log('🧰 memoService.deleteMemo 함수 시작 - id:', id);
     
-    // 인증 상태 확인
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError) {
-      console.error('❌ 인증 세션 확인 실패:', authError);
-      return { error: authError };
-    }
-    
-    if (!session?.user) {
-      console.error('❌ 인증되지 않은 사용자 - 삭제 불가');
-      return { error: { message: '인증이 필요합니다.' } };
-    }
-    
-    console.log('✅ 인증된 사용자:', session.user.id);
-    
-    console.log('🔍 삭제 쿼리 실행 중...');
-    const { error } = await supabase
-      .from('memos')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      console.error('❌ Supabase 삭제 오류:', error);
-      console.error('❌ 오류 세부사항:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+    try {
+      // 현재 사용자 인증 정보 확인
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      console.log('🔐 사용자 인증 확인:', { 
+        user: user?.id, 
+        authError: authError?.message,
+        hasUser: !!user
       });
-    } else {
-      console.log('✅ Supabase 삭제 성공 - id:', id);
+      
+      if (authError || !user) {
+        console.error('❌ 사용자 인증 실패:', authError?.message || '사용자가 없음');
+        return { error: { message: '사용자 인증이 필요합니다.' } };
+      }
+
+      console.log('🗂️ Supabase DELETE 쿼리 실행 중...');
+      console.log('🗂️ 쿼리 조건: id =', id, ', user_id =', user.id);
+      
+      const { error } = await supabase
+        .from('memos')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('❌ Supabase DELETE 쿼리 오류:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        return { error };
+      }
+
+      console.log('✅ Supabase DELETE 쿼리 성공 - 메모 삭제됨:', id);
+      return { data: null, error: null };
+    } catch (error) {
+      console.error('❌ memoService.deleteMemo에서 예외 발생:', error);
+      return { error: { message: '메모 삭제 중 오류가 발생했습니다.' } };
     }
-    
-    return { error };
   },
 
   // 메모 검색

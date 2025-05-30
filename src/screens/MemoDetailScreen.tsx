@@ -5,6 +5,8 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {
   Text,
@@ -18,6 +20,8 @@ import {
   Menu,
   Divider,
   Snackbar,
+  TextInput,
+  Button,
 } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -30,7 +34,8 @@ import {
   deleteMemo, 
   togglePinMemo, 
   setSelectedMemo,
-  clearError
+  clearError,
+  updateMemo
 } from '../store/slices/memosSlice';
 
 type MemoDetailScreenNavigationProp = StackNavigationProp<
@@ -57,12 +62,24 @@ export default function MemoDetailScreen() {
 
   const [menuVisible, setMenuVisible] = useState(false);
 
+  // 편집 모드 상태
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editText, setEditText] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
   // 현재 메모 찾기
   const memo = memos.find(m => m.id === memoId);
 
   useEffect(() => {
     if (memo) {
       dispatch(setSelectedMemo(memo));
+      // 편집 상태 초기화
+      const memoData = memo as any;
+      const content = memoData.text || memoData.content || '';
+      setEditText(content);
+      setEditTags([...memo.tags]);
     }
   }, [memo, dispatch]);
 
@@ -105,8 +122,82 @@ export default function MemoDetailScreen() {
 
   const handleEditMemo = () => {
     setMenuVisible(false);
-    // TODO: 편집 모드로 전환 또는 EditMemo 화면으로 이동
-    console.log('편집 모드로 전환:', memoId);
+    setIsEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (memo) {
+      // 원래 상태로 복원
+      const memoData = memo as any;
+      const content = memoData.text || memoData.content || '';
+      setEditText(content);
+      setEditTags([...memo.tags]);
+      setTagInput('');
+    }
+    setIsEditMode(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!memo) return;
+
+    if (!editText.trim()) {
+      Alert.alert('오류', '메모 내용을 입력해주세요.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const updateData = {
+        id: memo.id,
+        updates: {
+          text: editText.trim(),
+          tags: editTags,
+          updated_at: new Date().toISOString(),
+        }
+      };
+
+      console.log('📝 메모 수정 요청:', updateData);
+      
+      const result = await dispatch(updateMemo(updateData));
+      
+      if (updateMemo.fulfilled.match(result)) {
+        console.log('✅ 메모 수정 성공:', result.payload);
+        setIsEditMode(false);
+        setTagInput('');
+      } else {
+        console.error('❌ 메모 수정 실패:', result.payload);
+        Alert.alert('오류', '메모 수정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('❌ 메모 수정 예외:', error);
+      Alert.alert('오류', '메모 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddTag = () => {
+    const newTag = tagInput.trim();
+    
+    if (!newTag) return;
+    
+    if (editTags.includes(newTag)) {
+      Alert.alert('알림', '이미 추가된 태그입니다.');
+      return;
+    }
+
+    if (editTags.length >= 5) {
+      Alert.alert('알림', '태그는 최대 5개까지 추가할 수 있습니다.');
+      return;
+    }
+
+    setEditTags([...editTags, newTag]);
+    setTagInput('');
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setEditTags(editTags.filter(tag => tag !== tagToRemove));
   };
 
   const handleDismissError = () => {
@@ -165,44 +256,62 @@ export default function MemoDetailScreen() {
   const title = memoData.title || '';
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <Appbar.Header>
-        <Appbar.BackAction onPress={handleBack} />
+        <Appbar.BackAction onPress={isEditMode ? handleCancelEdit : handleBack} />
         <Appbar.Content 
-          title={title || '메모 상세'} 
+          title={isEditMode ? '메모 편집' : (title || '메모 상세')} 
           titleStyle={{ fontSize: 18 }}
         />
-        {memo.is_pinned && (
+        {!isEditMode && memo.is_pinned && (
           <Appbar.Action icon="pin" onPress={() => {}} disabled />
         )}
-        <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
-          anchor={
+        {isEditMode ? (
+          <>
             <Appbar.Action 
-              icon="dots-vertical" 
-              onPress={() => setMenuVisible(true)} 
+              icon="close" 
+              onPress={handleCancelEdit}
+              disabled={isSaving}
             />
-          }
-        >
-          <Menu.Item
-            onPress={handleEditMemo}
-            title="편집"
-            leadingIcon="pencil-outline"
-          />
-          <Menu.Item
-            onPress={handleTogglePin}
-            title={memo.is_pinned ? "고정 해제" : "고정하기"}
-            leadingIcon={memo.is_pinned ? "pin-off-outline" : "pin-outline"}
-          />
-          <Divider />
-          <Menu.Item
-            onPress={handleDeleteMemo}
-            title="삭제"
-            leadingIcon="delete-outline"
-            titleStyle={{ color: theme.colors.error }}
-          />
-        </Menu>
+            <Appbar.Action 
+              icon="check" 
+              onPress={handleSaveEdit}
+              disabled={isSaving}
+            />
+          </>
+        ) : (
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <Appbar.Action 
+                icon="dots-vertical" 
+                onPress={() => setMenuVisible(true)} 
+              />
+            }
+          >
+            <Menu.Item
+              onPress={handleEditMemo}
+              title="편집"
+              leadingIcon="pencil-outline"
+            />
+            <Menu.Item
+              onPress={handleTogglePin}
+              title={memo.is_pinned ? "고정 해제" : "고정하기"}
+              leadingIcon={memo.is_pinned ? "pin-off-outline" : "pin-outline"}
+            />
+            <Divider />
+            <Menu.Item
+              onPress={handleDeleteMemo}
+              title="삭제"
+              leadingIcon="delete-outline"
+              titleStyle={{ color: theme.colors.error }}
+            />
+          </Menu>
+        )}
       </Appbar.Header>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -213,82 +322,169 @@ export default function MemoDetailScreen() {
           ]}
         >
           <Card.Content style={styles.cardContent}>
-            {/* 헤더 정보 */}
-            <View style={styles.headerInfo}>
-              <View style={styles.priorityContainer}>
-                <IconButton 
-                  icon={priorityDetail.icon} 
-                  iconColor={priorityDetail.color} 
-                  size={20}
-                  style={styles.priorityIcon}
-                />
-                <Text style={[styles.priorityText, { color: textColor }]}>
-                  우선순위: {priorityDetail.label}
-                </Text>
-              </View>
-            </View>
-
-            {/* 제목 */}
-            {title && (
-              <Text 
-                variant="headlineSmall" 
-                style={[styles.memoTitle, { color: textColor }]}
-              >
-                {title}
-              </Text>
-            )}
-
-            {/* 내용 */}
-            <Text 
-              variant="bodyLarge" 
-              style={[styles.memoContent, { color: textColor }]}
-            >
-              {content || '내용이 없습니다.'}
-            </Text>
-
-            {/* 태그 */}
-            {memo.tags && memo.tags.length > 0 && (
-              <View style={styles.tagsContainer}>
-                <Text style={[styles.sectionTitle, { color: textColor }]}>
-                  태그
-                </Text>
-                <View style={styles.tagsWrapper}>
-                  {memo.tags.map((tag) => (
-                    <Chip
-                      key={`${memo.id}-${tag}`}
-                      mode="outlined"
-                      style={[styles.tag, { borderColor: isDarkBackground ? '#666' : '#ccc' }]}
-                      textStyle={[styles.tagText, { color: isDarkBackground ? '#ddd' : '#555' }]}
-                    >
-                      {tag}
-                    </Chip>
-                  ))}
+            {isEditMode ? (
+              /* 편집 모드 UI */
+              <>
+                {/* 메모 내용 편집 */}
+                <View style={styles.editSection}>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    메모 내용
+                  </Text>
+                  <TextInput
+                    value={editText}
+                    onChangeText={setEditText}
+                    placeholder="메모 내용을 입력하세요..."
+                    mode="outlined"
+                    multiline
+                    numberOfLines={6}
+                    style={[styles.textInput, { backgroundColor: 'rgba(255,255,255,0.9)' }]}
+                    maxLength={1000}
+                  />
+                  <Text style={[styles.characterCount, { color: textColor }]}>
+                    {editText.length}/1000
+                  </Text>
                 </View>
-              </View>
-            )}
 
-            {/* 메타 정보 */}
-            <View style={styles.metaInfo}>
-              <Text style={[styles.metaText, { color: textColor, opacity: 0.7 }]}>
-                생성일: {formatDateTime(memo.created_at)}
-              </Text>
-              {memo.updated_at && memo.updated_at !== memo.created_at && (
-                <Text style={[styles.metaText, { color: textColor, opacity: 0.7 }]}>
-                  수정일: {formatDateTime(memo.updated_at)}
+                {/* 태그 편집 */}
+                <View style={styles.editSection}>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    태그 ({editTags.length}/5)
+                  </Text>
+                  
+                  <View style={styles.tagInputContainer}>
+                    <TextInput
+                      value={tagInput}
+                      onChangeText={setTagInput}
+                      placeholder="태그를 입력하세요"
+                      mode="outlined"
+                      style={[styles.tagInput, { backgroundColor: 'rgba(255,255,255,0.9)' }]}
+                      onSubmitEditing={handleAddTag}
+                      maxLength={20}
+                    />
+                    <Button
+                      mode="contained"
+                      onPress={handleAddTag}
+                      disabled={!tagInput.trim() || editTags.length >= 5}
+                      style={styles.addTagButton}
+                    >
+                      추가
+                    </Button>
+                  </View>
+
+                  {editTags.length > 0 && (
+                    <View style={styles.tagsWrapper}>
+                      {editTags.map((tag) => (
+                        <Chip
+                          key={tag}
+                          mode="outlined"
+                          onClose={() => handleRemoveTag(tag)}
+                          style={[styles.tag, { borderColor: isDarkBackground ? '#666' : '#ccc' }]}
+                          textStyle={[styles.tagText, { color: isDarkBackground ? '#ddd' : '#555' }]}
+                        >
+                          {tag}
+                        </Chip>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* 저장 버튼 */}
+                <View style={styles.saveButtonContainer}>
+                  <Button
+                    mode="contained"
+                    onPress={handleSaveEdit}
+                    loading={isSaving}
+                    disabled={isSaving || !editText.trim()}
+                    style={styles.saveButton}
+                    contentStyle={styles.saveButtonContent}
+                  >
+                    {isSaving ? '저장 중...' : '변경사항 저장'}
+                  </Button>
+                </View>
+              </>
+            ) : (
+              /* 보기 모드 UI (기존) */
+              <>
+                {/* 헤더 정보 */}
+                <View style={styles.headerInfo}>
+                  <View style={styles.priorityContainer}>
+                    <IconButton 
+                      icon={priorityDetail.icon} 
+                      iconColor={priorityDetail.color} 
+                      size={20}
+                      style={styles.priorityIcon}
+                    />
+                    <Text style={[styles.priorityText, { color: textColor }]}>
+                      우선순위: {priorityDetail.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* 제목 */}
+                {title && (
+                  <Text 
+                    variant="headlineSmall" 
+                    style={[styles.memoTitle, { color: textColor }]}
+                  >
+                    {title}
+                  </Text>
+                )}
+
+                {/* 내용 */}
+                <Text 
+                  variant="bodyLarge" 
+                  style={[styles.memoContent, { color: textColor }]}
+                >
+                  {content || '내용이 없습니다.'}
                 </Text>
-              )}
-            </View>
+
+                {/* 태그 */}
+                {memo.tags && memo.tags.length > 0 && (
+                  <View style={styles.tagsContainer}>
+                    <Text style={[styles.sectionTitle, { color: textColor }]}>
+                      태그
+                    </Text>
+                    <View style={styles.tagsWrapper}>
+                      {memo.tags.map((tag) => (
+                        <Chip
+                          key={`${memo.id}-${tag}`}
+                          mode="outlined"
+                          style={[styles.tag, { borderColor: isDarkBackground ? '#666' : '#ccc' }]}
+                          textStyle={[styles.tagText, { color: isDarkBackground ? '#ddd' : '#555' }]}
+                        >
+                          {tag}
+                        </Chip>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* 메타 정보 */}
+                <View style={styles.metaInfo}>
+                  <Text style={[styles.metaText, { color: textColor, opacity: 0.7 }]}>
+                    생성일: {formatDateTime(memo.created_at)}
+                  </Text>
+                  {memo.updated_at && memo.updated_at !== memo.created_at && (
+                    <Text style={[styles.metaText, { color: textColor, opacity: 0.7 }]}>
+                      수정일: {formatDateTime(memo.updated_at)}
+                    </Text>
+                  )}
+                </View>
+              </>
+            )}
           </Card.Content>
         </Card>
       </ScrollView>
 
-      <FAB
-        icon="pencil"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        color={theme.colors.onPrimary}
-        onPress={handleEditMemo}
-        label="편집"
-      />
+      {!isEditMode && (
+        <FAB
+          icon="pencil"
+          style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+          color={theme.colors.onPrimary}
+          onPress={handleEditMemo}
+          label="편집"
+        />
+      )}
 
       <Snackbar
         visible={!!error}
@@ -302,7 +498,7 @@ export default function MemoDetailScreen() {
       >
         <Text style={{color: theme.colors.onErrorContainer}}>{error}</Text>
       </Snackbar>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -401,5 +597,36 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 28,
+  },
+  editSection: {
+    marginBottom: 20,
+  },
+  textInput: {
+    marginBottom: 8,
+  },
+  characterCount: {
+    alignSelf: 'flex-end',
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.5)',
+  },
+  tagInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tagInput: {
+    flex: 1,
+    marginRight: 8,
+  },
+  addTagButton: {
+    marginLeft: 8,
+  },
+  saveButtonContainer: {
+    alignItems: 'center',
+  },
+  saveButton: {
+    marginTop: 16,
+  },
+  saveButtonContent: {
+    padding: 16,
   },
 }); 

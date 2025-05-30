@@ -35,6 +35,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, CreateMemoRequest, Category, Tag } from '../types';
 import type { RootState, AppDispatch } from '../store';
 import { newMemoService } from '../services/newMemoService';
+import { createMemo, fetchMemos } from '../store/slices/memosSlice';
 
 type CreateMemoScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -226,6 +227,7 @@ export default function CreateMemoScreen() {
     setIsLoading(true);
 
     try {
+      // 기존 newMemoService 방식으로 복원
       const memoData: CreateMemoRequest = {
         text: text.trim(),
         is_widget: isWidget,
@@ -238,23 +240,31 @@ export default function CreateMemoScreen() {
         user_id: user.id,
       };
 
+      console.log('📝 newMemoService로 메모 생성:', memoData);
+      
       const { data, error } = await newMemoService.createMemo(memoData);
       
       if (error) {
-        console.error('메모 생성 오류:', error);
+        console.error('❌ 메모 생성 오류:', error);
         setSnackbarMessage('메모 저장에 실패했습니다.');
         setShowSnackbar(true);
       } else {
+        console.log('✅ 메모 생성 성공:', data);
         setSnackbarMessage('메모가 성공적으로 저장되었습니다!');
         setShowSnackbar(true);
         
+        // 메모 목록 새로고침을 위해 Redux 액션 디스패치
+        console.log('🔄 메모 목록 새로고침 요청');
+        dispatch(fetchMemos(user.id));
+        
+        // 짧은 딜레이 후 뒤로 이동
         setTimeout(() => {
           navigation.goBack();
-        }, 1500);
+        }, 800);
       }
       
     } catch (error) {
-      console.error('메모 생성 예외:', error);
+      console.error('❌ 메모 생성 예외:', error);
       setSnackbarMessage('메모 저장 중 예상치 못한 오류가 발생했습니다.');
       setShowSnackbar(true);
     } finally {
