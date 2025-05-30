@@ -50,6 +50,8 @@ export default function MemosScreen() {
   const [menuVisibleId, setMenuVisibleId] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🔍 MemosScreen useEffect - user:', user?.id);
+    console.log('🔍 현재 메모 개수:', memos.length);
     if (user?.id) {
       dispatch(fetchMemos(user.id));
     }
@@ -89,16 +91,40 @@ export default function MemosScreen() {
   };
 
   const handleDeleteMemo = (memoId: string) => {
+    console.log('🗑️ 삭제 버튼 클릭됨 - memoId:', memoId);
+    console.log('🔍 현재 사용자 상태:', { 
+      userId: user?.id, 
+      isAuthenticated: !!user?.id,
+      email: user?.email 
+    });
+    
+    // 사용자가 로그인되어 있지 않으면 삭제 불가
+    if (!user?.id) {
+      console.error('❌ 사용자가 로그인되어 있지 않음 - 삭제 불가');
+      Alert.alert('오류', '로그인이 필요합니다.');
+      return;
+    }
+    
     setMenuVisibleId(null);
     Alert.alert(
       '메모 삭제',
       '이 메모를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
       [
-        { text: '취소', style: 'cancel' },
+        { 
+          text: '취소', 
+          style: 'cancel',
+          onPress: () => {
+            console.log('🚫 삭제 취소됨 - memoId:', memoId);
+          }
+        },
         {
           text: '삭제',
           style: 'destructive',
-          onPress: () => dispatch(deleteMemo(memoId)),
+          onPress: () => {
+            console.log('🗑️ 삭제 확인됨 - Redux 액션 디스패치 시작:', memoId);
+            console.log('🔍 현재 사용자 ID:', user?.id);
+            dispatch(deleteMemo(memoId));
+          },
         },
       ]
     );
@@ -115,7 +141,7 @@ export default function MemosScreen() {
 
   const handleEditMemo = (memo: StickerMemo) => {
     setMenuVisibleId(null);
-    // TODO: EditMemo 화면으로 이동 (현재는 MemoDetail로 이동)
+    // MemoDetail 화면으로 이동
     navigation.navigate('MemoDetail', { memoId: memo.id });
   };
 
@@ -156,6 +182,14 @@ export default function MemosScreen() {
             <Text variant="titleMedium" style={[styles.memoTitle, { color: textColor }]} numberOfLines={1}>
               {title || (content ? content.substring(0, 30) + (content.length > 30 ? '...' : '') : '내용 없음')}
             </Text>
+            {/* 임시 직접 삭제 버튼 */}
+            <IconButton
+              icon="delete"
+              size={20}
+              iconColor={theme.colors.error}
+              onPress={() => handleDeleteMemo(item.id)}
+              style={{ marginRight: 8 }}
+            />
             <Menu
               visible={menuVisibleId === item.id}
               onDismiss={() => setMenuVisibleId(null)}

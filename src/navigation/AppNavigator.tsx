@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LoginScreen from '../screens/LoginScreen';
 import MemosScreen from '../screens/MemosScreen';
 import CreateMemoScreen from '../screens/CreateMemoScreen';
+import MemoDetailScreen from '../screens/MemoDetailScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -27,6 +28,7 @@ function MainTabNavigator() {
 
   return (
     <Tab.Navigator
+      id={undefined}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string;
@@ -124,8 +126,9 @@ export default function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
         <>
-        <Stack.Screen name="Home" component={MainTabNavigator} />
+          <Stack.Screen name="Home" component={MainTabNavigator} />
           <Stack.Screen name="CreateMemo" component={CreateMemoScreen} />
+          <Stack.Screen name="MemoDetail" component={MemoDetailScreen} />
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />

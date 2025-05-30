@@ -197,10 +197,12 @@ const memosSlice = createSlice({
     // deleteMemo
     builder
       .addCase(deleteMemo.pending, (state) => {
+        console.log('⏳ Redux deleteMemo.pending');
         state.isLoading = true;
         state.error = null;
       })
       .addCase(deleteMemo.fulfilled, (state, action) => {
+        console.log('✅ Redux deleteMemo.fulfilled - 삭제된 ID:', action.payload);
         state.isLoading = false;
         state.memos = state.memos.filter(memo => memo.id !== action.payload);
         if (state.selectedMemo?.id === action.payload) {
@@ -208,6 +210,7 @@ const memosSlice = createSlice({
         }
       })
       .addCase(deleteMemo.rejected, (state, action) => {
+        console.error('❌ Redux deleteMemo.rejected:', action.payload);
         state.isLoading = false;
         state.error = action.payload as string;
       });

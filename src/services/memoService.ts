@@ -49,10 +49,40 @@ export const memoService = {
 
   // 메모 삭제
   async deleteMemo(id: string) {
+    console.log('🔗 memoService.deleteMemo 호출됨 - id:', id);
+    console.log('🔍 ID 타입:', typeof id, '| 값:', id, '| 길이:', id?.length);
+    
+    // 인증 상태 확인
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
+    if (authError) {
+      console.error('❌ 인증 세션 확인 실패:', authError);
+      return { error: authError };
+    }
+    
+    if (!session?.user) {
+      console.error('❌ 인증되지 않은 사용자 - 삭제 불가');
+      return { error: { message: '인증이 필요합니다.' } };
+    }
+    
+    console.log('✅ 인증된 사용자:', session.user.id);
+    
+    console.log('🔍 삭제 쿼리 실행 중...');
     const { error } = await supabase
       .from('memos')
       .delete()
       .eq('id', id);
+    
+    if (error) {
+      console.error('❌ Supabase 삭제 오류:', error);
+      console.error('❌ 오류 세부사항:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+    } else {
+      console.log('✅ Supabase 삭제 성공 - id:', id);
+    }
     
     return { error };
   },
