@@ -100,6 +100,8 @@ export type RootStackParamList = {
   MemoDetail: { memoId: string };
   EventDetail: { eventId: string };
   Settings: undefined;
+  HelpScreen: undefined;
+  PrivacyPolicyScreen: undefined;
 };
 
 export type BottomTabParamList = {

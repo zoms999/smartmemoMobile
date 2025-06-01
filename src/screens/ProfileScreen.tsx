@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -23,29 +23,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchMemos } from '../store/slices/memosSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { StickerMemo } from '../types';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { RootStackParamList } from '../types';
+import { useThemeContext } from '../contexts/ThemeContext';
 
-// --- PLACEHOLDER for Global Theme Context/Service ---
-// In a real app, this would come from your theme management solution
-interface AppThemeContextType {
-  toggleTheme: () => void;
-  isSystemDark: boolean; // Assuming you might have a system theme setting
-}
-const useAppTheme = (): AppThemeContextType => {
-  // This is a mock. Replace with your actual theme context.
-  const [systemDark, setSystemDark] = useState(false); // Mock state
-  return {
-    toggleTheme: () => {
-      console.log("Global theme toggled (MOCK)");
-      setSystemDark(prev => !prev); // Mock toggling
-      Alert.alert(
-        "테마 변경",
-        "앱 전체 테마가 변경되었습니다. (실제 앱에서는 즉시 반영 또는 재시작 필요)"
-      );
-    },
-    isSystemDark: systemDark, // Mock value
-  };
-};
-// --- END OF PLACEHOLDER ---
+// Theme context is now implemented in ../contexts/ThemeContext.tsx
 
 
 const getDisplayName = (user: User | null): string => {
@@ -71,9 +54,10 @@ function getWeekRange(date: Date): { startOfWeek: Date, endOfWeek: Date } {
 }
 
 export default function ProfileScreen() {
-  const paperTheme = useTheme(); // Renamed to avoid conflict with appTheme
+  const paperTheme = useTheme();
   const dispatch = useDispatch<AppDispatch>();
-  const appTheme = useAppTheme(); // Using the placeholder theme hook
+  const { theme, isDarkMode, toggleTheme } = useThemeContext();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -85,16 +69,8 @@ export default function ProfileScreen() {
     error: errorMemos
   } = useSelector((state: RootState) => state.memos);
 
-  // Local state for dark mode switch, reflecting the app's theme state
-  // This should ideally be driven directly by your global theme context
-  const [isAppDarkMode, setIsAppDarkMode] = useState(paperTheme.dark); 
-  const [notificationsEnabled] = useState(true); // Kept for UI, but functionality is "준비 중"
-
-  useEffect(() => {
-    // Sync local dark mode switch state with the global theme from Paper
-    // This is a bit of a workaround. Ideally, your global theme context would be the single source of truth.
-    setIsAppDarkMode(paperTheme.dark);
-  }, [paperTheme.dark]);
+  // Notifications state (functionality is "준비 중")
+  const [notificationsEnabled] = useState(true);
 
 
   useEffect(() => {
@@ -138,16 +114,7 @@ export default function ProfileScreen() {
     return { totalMemos, totalSchedules, memosThisWeek };
   }, [allUserMemos]);
 
-  // --- Dark Mode Toggle ---
-  const toggleAppTheme = useCallback(() => {
-    // This function should call your global theme toggling logic
-    appTheme.toggleTheme(); // Calling the mock theme toggle
-    // After the global theme is toggled, paperTheme.dark will update,
-    // and the useEffect listening to paperTheme.dark will update isAppDarkMode.
-    // Or, your global theme context provides the 'isDark' value directly.
-    setIsAppDarkMode(prev => !prev); // Optimistically update local state or rely on useEffect
-  }, [appTheme]);
-  // --- End Dark Mode Toggle ---
+  // Dark Mode Toggle now uses the real theme context
 
 
   const handleLogout = async () => {
@@ -253,19 +220,16 @@ export default function ProfileScreen() {
           <List.Section title="앱 설정" titleStyle={{ marginLeft: 16, color: paperTheme.colors.onSurfaceVariant, fontWeight: 'bold' }}>
             <List.Item
               title="다크 모드"
-              description={isAppDarkMode ? "어두운 테마 사용 중" : "밝은 테마 사용 중"}
+              description={theme === 'system' ? '시스템 설정에 따름' : (isDarkMode ? '어두운 테마 사용 중' : '밝은 테마 사용 중')}
               titleStyle={{ color: paperTheme.colors.onSurface }}
-              descriptionStyle={{ color: paperTheme.colors.onSurfaceVariant }}
-              left={props => <List.Icon {...props} icon="theme-light-dark" color={paperTheme.colors.onSurfaceVariant} />}
+              left={props => <List.Icon {...props} icon="theme-light-dark" />}
               right={() => (
                 <Switch
-                  value={isAppDarkMode}
-                  onValueChange={toggleAppTheme} // Use the new handler
+                  value={isDarkMode}
+                  onValueChange={toggleTheme}
                   color={paperTheme.colors.primary}
                 />
               )}
-              onPress={toggleAppTheme} // Allow pressing the item to toggle
-              style={styles.listItem}
             />
             <Divider style={{ backgroundColor: paperTheme.colors.outlineVariant }} />
             <List.Item
@@ -298,7 +262,7 @@ export default function ProfileScreen() {
               titleStyle={{ color: paperTheme.colors.onSurface }}
               left={props => <List.Icon {...props} icon="help-circle-outline" color={paperTheme.colors.onSurfaceVariant} />}
               right={props => <List.Icon {...props} icon="chevron-right" color={paperTheme.colors.onSurfaceVariant} />}
-              onPress={() => Alert.alert('도움말', '도움말 화면으로 이동합니다 (구현 예정)')}
+              onPress={() => navigation.navigate('HelpScreen')}
               style={styles.listItem}
             />
             <Divider style={{ backgroundColor: paperTheme.colors.outlineVariant }} />
@@ -307,7 +271,7 @@ export default function ProfileScreen() {
               titleStyle={{ color: paperTheme.colors.onSurface }}
               left={props => <List.Icon {...props} icon="shield-lock-outline" color={paperTheme.colors.onSurfaceVariant} />}
               right={props => <List.Icon {...props} icon="chevron-right" color={paperTheme.colors.onSurfaceVariant} />}
-              onPress={() => Alert.alert('개인정보 처리방침', '개인정보 처리방침 화면으로 이동합니다 (구현 예정)')}
+              onPress={() => navigation.navigate('PrivacyPolicyScreen')}
               style={styles.listItem}
             />
             <Divider style={{ backgroundColor: paperTheme.colors.outlineVariant }} />

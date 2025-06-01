@@ -304,7 +304,9 @@ export default function MemosScreen() {
     );
   };
 
-  if (isLoading && memos.length === 0) {
+  // 첫 로딩 시에만 전체 화면 로딩 표시, 이미 메모가 있으면 FlatList의 refreshing으로 처리
+  // 이렇게 하면 탭 전환 시 화면이 멈추지 않음
+  if (isLoading && memos.length === 0 && !user?.id) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />

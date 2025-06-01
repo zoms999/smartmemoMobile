@@ -4,12 +4,25 @@ import { PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { store } from '../store';
-import { lightTheme } from '../theme';
+import { ThemeProvider, useThemeContext } from '../contexts/ThemeContext';
 import { testConnection, testAuth } from '../utils/simpleSupabaseTest';
 
 interface AppProviderProps {
   children: ReactNode;
 }
+
+// Inner provider that uses theme context
+const ThemedApp: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { currentTheme } = useThemeContext();
+  
+  return (
+    <PaperProvider theme={currentTheme}>
+      <NavigationContainer>
+        {children}
+      </NavigationContainer>
+    </PaperProvider>
+  );
+};
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
@@ -26,12 +39,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   return (
     <Provider store={store}>
       <SafeAreaProvider>
-        <PaperProvider theme={lightTheme}>
-          <NavigationContainer>
+        <ThemeProvider>
+          <ThemedApp>
             {children}
-          </NavigationContainer>
-        </PaperProvider>
+          </ThemedApp>
+        </ThemeProvider>
       </SafeAreaProvider>
     </Provider>
   );
-}; 
+};

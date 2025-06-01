@@ -12,6 +12,8 @@ import CreateMemoScreen from '../screens/CreateMemoScreen';
 import MemoDetailScreen from '../screens/MemoDetailScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import HelpScreen from '../screens/HelpScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 
 // 타입 정의
 import type { RootStackParamList, BottomTabParamList } from '../types';
@@ -129,6 +131,8 @@ export default function AppNavigator() {
           <Stack.Screen name="Home" component={MainTabNavigator} />
           <Stack.Screen name="CreateMemo" component={CreateMemoScreen} />
           <Stack.Screen name="MemoDetail" component={MemoDetailScreen} />
+          <Stack.Screen name="HelpScreen" component={HelpScreen} />
+          <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />

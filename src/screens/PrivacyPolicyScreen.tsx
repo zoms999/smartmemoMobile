@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, Appbar, Card, useTheme, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 
