@@ -21,6 +21,7 @@ import { authService } from '../services/supabase';
 import type { User } from '@supabase/supabase-js';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchMemos } from '../store/slices/memosSlice';
+import { signOut } from '../store/slices/authSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { StickerMemo } from '../types';
 import { useNavigation } from '@react-navigation/native';
@@ -123,15 +124,8 @@ export default function ProfileScreen() {
       {
         text: '로그아웃', style: 'destructive',
         onPress: async () => {
-          setIsLoadingUser(true);
-          const { error: signOutError } = await authService.signOut();
-          setIsLoadingUser(false);
-          if (signOutError) {
-            Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
-          } else {
-            setCurrentUser(null);
-            // TODO: Navigate to Login/Auth screen
-          }
+          // Redux의 signOut 액션을 사용하여 로그아웃 처리
+          dispatch(signOut());
         }
       }]
     );

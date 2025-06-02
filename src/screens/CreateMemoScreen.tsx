@@ -500,6 +500,7 @@ export default function CreateMemoScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <Appbar.Header>
         <Appbar.BackAction onPress={handleCancel} />
@@ -511,7 +512,13 @@ export default function CreateMemoScreen() {
         />
       </Appbar.Header>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        bounces={true}
+        alwaysBounceVertical={true}
+      >
         {/* 메모 내용 입력 */}
         <Card style={styles.section}>
           <Card.Content>
@@ -954,8 +961,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16,
+    paddingBottom: 100, // 추가 여백으로 스크롤 영역 확보
   },
   section: {
     marginBottom: 16,
@@ -973,6 +981,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 12,
     opacity: 0.6,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 50,
   },
   loadingContainer: {
     flexDirection: 'row',
