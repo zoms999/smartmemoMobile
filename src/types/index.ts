@@ -107,6 +107,7 @@ export type RootStackParamList = {
 export type BottomTabParamList = {
   Memos: undefined;
   Calendar: undefined;
+  Lottery: undefined;
   Profile: undefined;
 };
 
@@ -151,4 +152,29 @@ export interface CreateMemoRequest {
   reminder?: string;
   images?: string[];
   user_id: string;
+}
+
+// 로또 번호 관련 타입
+export interface LotteryNumbers {
+  id?: number;
+  user_id: string;
+  numbers: number[];
+  bonus_number?: number;
+  generation_method: 'AI' | 'MANUAL' | 'RANDOM';
+  is_favorite: boolean;
+  is_purchased: boolean;
+  purchase_date?: string;
+  draw_round?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 로또 번호 생성 요청 타입
+export interface CreateLotteryNumbersRequest {
+  numbers: number[];
+  bonus_number?: number;
+  generation_method: 'AI' | 'MANUAL' | 'RANDOM';
+  is_favorite?: boolean;
+  notes?: string;
 } 

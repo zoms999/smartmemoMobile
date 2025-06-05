@@ -4,11 +4,12 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.1.0",
     "@expo/metro-runtime": "~5.0.4",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/datetimepicker": "^7.6.2",
@@ -23,6 +24,7 @@
     "react": "19.0.0",
     "react-dom": "^19.0.0",
     "react-native": "0.79.2",
+    "react-native-crypto": "^2.2.0",
     "react-native-dotenv": "^3.4.11",
     "react-native-mmkv": "^3.2.0",
     "react-native-paper": "^5.14.5",
@@ -32,7 +34,8 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
     "react-redux": "^9.2.0",
-    "redux-persist": "^6.0.0"
+    "redux-persist": "^6.0.0",
+    "stream-browserify": "^3.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.27.3",

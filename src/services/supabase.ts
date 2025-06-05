@@ -20,6 +20,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true, // URL에서 세션 자동 감지 활성화
   },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+  // React Native 환경에서 WebSocket 문제 방지
+  global: {
+    headers: {
+      'X-Client-Info': 'supabase-js-react-native',
+    },
+  },
 });
 
 // 테스트용 사용자 데이터

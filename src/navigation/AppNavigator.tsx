@@ -11,6 +11,7 @@ import MemosScreen from '../screens/MemosScreen';
 import CreateMemoScreen from '../screens/CreateMemoScreen';
 import MemoDetailScreen from '../screens/MemoDetailScreen';
 import CalendarScreen from '../screens/CalendarScreen';
+import LotteryScreen from '../screens/LotteryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import HelpScreen from '../screens/HelpScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
@@ -42,6 +43,9 @@ function MainTabNavigator() {
             case 'Calendar':
               iconName = focused ? 'calendar' : 'calendar-outline';
               break;
+            case 'Lottery':
+              iconName = focused ? 'dice-multiple' : 'dice-multiple-outline';
+              break;
             case 'Profile':
               iconName = focused ? 'account' : 'account-outline';
               break;
@@ -72,6 +76,11 @@ function MainTabNavigator() {
         name="Calendar" 
         component={CalendarScreen}
         options={{ title: '일정' }}
+      />
+      <Tab.Screen 
+        name="Lottery" 
+        component={LotteryScreen}
+        options={{ title: '로또' }}
       />
       <Tab.Screen 
         name="Profile" 
@@ -125,7 +134,7 @@ export default function AppNavigator() {
   // }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
         <>
           <Stack.Screen name="Home" component={MainTabNavigator} />

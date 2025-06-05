@@ -16,6 +16,7 @@ export default {
       supportsTablet: true
     },
     android: {
+      package: "com.hongsam.StickerMemoApp",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
@@ -29,6 +30,9 @@ export default {
     extra: {
       EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      eas: {
+        projectId: "0125d8cc-8f05-4338-9d0b-8c8b17ecaaa2"
+      }
     }
   }
 }; 
