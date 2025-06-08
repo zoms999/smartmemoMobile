@@ -33,6 +33,7 @@ export default {
       eas: {
         projectId: "0125d8cc-8f05-4338-9d0b-8c8b17ecaaa2"
       }
-    }
+    },
+    owner: "hongsam"
   }
 }; 

@@ -16,4 +16,10 @@ config.resolver.nodeModulesPaths = [
   'node_modules',
 ];
 
+// node-libs-react-native에서 제공하는 모듈을 추가합니다.
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  ...require('node-libs-react-native'),
+};
+
 module.exports = config; 
