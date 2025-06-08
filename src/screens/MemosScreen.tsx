@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   FlatList,
-  Dimensions,
   Alert,
 } from 'react-native';
 import {
@@ -27,11 +26,10 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
+
 import type { RootState, AppDispatch } from '../store';
 import { fetchMemos, clearError, deleteMemo, togglePinMemo } from '../store/slices/memosSlice';
 import type { StickerMemo, RootStackParamList } from '../types';
-
-const { width } = Dimensions.get('window');
 
 type MemosScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -41,7 +39,7 @@ const PRIORITY_DETAILS = {
   'high': { label: '높음', icon: 'arrow-up-circle-outline', color: '#F44336' },
 };
 
-// [추가] 배경색에 따라 적절한 텍스트 색상(검정/흰색)을 반환하는 헬퍼 함수
+// 배경색에 따라 적절한 텍스트 색상(검정/흰색)을 반환하는 헬퍼 함수
 const getTextColorForBackground = (hexColor: string) => {
   if (!hexColor || hexColor.length < 7) {
     return '#000000'; // 기본값으로 검정색 반환
