@@ -75,7 +75,7 @@ export const authService = {
         ? 'http://localhost:8081'  // Expo Web 개발 시
         : 'exp://localhost:8081';  // Expo Go 또는 개발 클라이언트 사용 시
     } else {
-      redirectTo = `${Constants.expoConfig?.scheme}://auth`;
+      redirectTo = 'stickermemoapp://login-callback';
     }
 
     console.log('🔗 Google 로그인 redirectTo:', redirectTo);
@@ -122,5 +122,15 @@ export const authService = {
   async resetPassword(email: string) {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email);
     return { data, error };
+  },
+
+  // 현재 세션 정보 가져오기
+  async getSession() {
+    return await supabase.auth.getSession();
+  },
+
+  // 수동 세션 설정
+  async setSession(tokens: { access_token: string; refresh_token: string }) {
+    return await supabase.auth.setSession(tokens);
   },
 }; 

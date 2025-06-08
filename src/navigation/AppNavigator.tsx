@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useTheme } from 'react-native-paper';
 import { useSelector, useDispatch } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Linking } from 'react-native';
 
 // 화면 컴포넌트들
 import LoginScreen from '../screens/LoginScreen';
@@ -94,37 +95,75 @@ function MainTabNavigator() {
 // 메인 앱 네비게이터
 export default function AppNavigator() {
   const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, isLoading } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    // 앱 시작 시 현재 사용자 정보 확인
-    dispatch(getCurrentUser());
+    // --- 딥링크를 수동으로 처리하는 함수 ---
+    const handleDeepLink = async (url: string | null): Promise<void> => {
+      if (!url) return;
+      console.log('🔗 AppNavigator: Handling deep link:', url);
+      // URL에서 해시(#) 부분을 추출
+      const hash = url.split('#')[1];
+      if (!hash) return;
+      // 파라미터 파싱
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        console.log('🔧 AppNavigator: Tokens found in URL. Setting session manually...');
+        try {
+          const { error } = await authService.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) {
+            console.error('❌ AppNavigator: Manual session setup failed:', error.message);
+          } else {
+            console.log('✅ AppNavigator: Manual session setup successful. onAuthStateChange should now fire.');
+          }
+        } catch (e) {
+          console.error('❌ AppNavigator: An exception occurred during manual session setup:', e);
+        }
+      } else {
+        console.log('ℹ️ AppNavigator: No access/refresh tokens found in the URL hash.');
+      }
+    };
 
-    // Supabase 인증 상태 변화 감지
+    // 1. 앱 시작 시 현재 세션 확인
+    authService.getSession().then(({ data: { session } }) => {
+      if (session) {
+        console.log('✅ AppNavigator: 초기 세션 발견, 사용자 정보 설정:', session.user.email);
+        dispatch(setUser({ user: session.user, session: session }));
+      }
+    });
+
+    // 2. onAuthStateChange 리스너 설정
     const { data: { subscription } } = authService.onAuthStateChange(
-      (event, session) => {
-        console.log('🔐 Auth state changed:', event);
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('✅ 사용자 로그인 성공:', session.user.email);
-          // 로그인 성공 시 Redux store 업데이트
-          dispatch(setUser(session.user));
-        } else if (event === 'SIGNED_OUT') {
-          console.log('👋 사용자 로그아웃');
-          // 로그아웃 시 Redux store 초기화
-          dispatch(setUser(null));
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          console.log('🔄 토큰 갱신됨:', session.user.email);
-          dispatch(setUser(session.user));
+      (_event, session) => {
+        console.log('🔐 AppNavigator: Auth state changed event received:', _event);
+        dispatch(setUser(session ? { user: session.user, session: session } : null));
+        if (session) {
+          console.log('✅ AppNavigator: Redux store updated with new session.', session.user.email);
         } else {
-          console.log('ℹ️ 기타 인증 이벤트:', event, session?.user?.email || 'no user');
+          console.log('👋 AppNavigator: Redux store updated for logout.');
         }
       }
     );
 
-    // 컴포넌트 언마운트 시 구독 해제
+    // 3. 딥링크 URL 리스너 설정
+    const deepLinkSubscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    // 앱이 딥링크로 시작되었을 때 초기 URL 처리
+    Linking.getInitialURL().then(url => {
+      handleDeepLink(url);
+    });
+
+    // 4. 컴포넌트 언마운트 시 모든 리스너 정리
     return () => {
       subscription?.unsubscribe();
+      deepLinkSubscription?.remove();
     };
   }, [dispatch]);
 

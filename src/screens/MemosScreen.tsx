@@ -5,7 +5,6 @@ import {
   FlatList,
   Dimensions,
   Alert,
-  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -42,6 +41,20 @@ const PRIORITY_DETAILS = {
   'high': { label: '높음', icon: 'arrow-up-circle-outline', color: '#F44336' },
 };
 
+// [추가] 배경색에 따라 적절한 텍스트 색상(검정/흰색)을 반환하는 헬퍼 함수
+const getTextColorForBackground = (hexColor: string) => {
+  if (!hexColor || hexColor.length < 7) {
+    return '#000000'; // 기본값으로 검정색 반환
+  }
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  // WCAG 명도 계산 공식
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? '#000000' : '#FFFFFF'; // 밝으면 검정, 어두우면 흰색
+};
+
+
 export default function MemosScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
@@ -56,32 +69,26 @@ export default function MemosScreen() {
   const [memoToDelete, setMemoToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('🔍 MemosScreen useEffect - user:', user?.id);
-    console.log('🔍 현재 메모 개수:', memos.length);
     if (user?.id) {
       dispatch(fetchMemos(user.id));
     }
   }, [dispatch, user?.id]);
 
-  // 화면이 포커스될 때마다 메모 새로고침
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🎯 MemosScreen 포커스 - 메모 새로고침');
       if (user?.id) {
-        console.log('📱 fetchMemos 디스패치 - userId:', user.id);
         dispatch(fetchMemos(user.id));
       }
     }, [dispatch, user?.id])
   );
 
   const filteredMemos = useMemo(() => {
-    // 메모 정렬: 고정된 메모 우선, 그 다음 최신 수정/생성 순
     const sortedMemos = [...memos].sort((a, b) => {
       if (a.is_pinned && !b.is_pinned) return -1;
       if (!a.is_pinned && b.is_pinned) return 1;
       const dateA = new Date(a.updated_at || a.created_at).getTime();
       const dateB = new Date(b.updated_at || b.created_at).getTime();
-      return dateB - dateA; // 최신순
+      return dateB - dateA;
     });
 
     if (searchQuery.trim() === '') {
@@ -108,47 +115,23 @@ export default function MemosScreen() {
   };
 
   const handleDeleteMemo = (memoId: string) => {
-    console.log('🗑️ 삭제 버튼 클릭됨 - memoId:', memoId);
-    console.log('🔍 현재 사용자 상태:', { 
-      userId: user?.id, 
-      isAuthenticated: !!user?.id,
-      email: user?.email 
-    });
-    
-    // 사용자가 로그인되어 있지 않으면 삭제 불가
     if (!user?.id) {
-      console.error('❌ 사용자가 로그인되어 있지 않음 - 삭제 불가');
       Alert.alert('오류', '로그인이 필요합니다.');
       return;
     }
-    
     setMenuVisibleId(null);
-    
-    console.log('📋 Dialog 표시 준비...');
     setMemoToDelete(memoId);
     setDeleteDialogVisible(true);
-    console.log('✅ Dialog 상태 설정 완료 - visible:', true, 'memoId:', memoId);
   };
 
   const handleDeleteConfirm = () => {
-    if (!memoToDelete) {
-      console.error('❌ 삭제할 메모 ID가 없음');
-      return;
-    }
-    
-    console.log('🗑️ 삭제 확인됨 - Redux 액션 디스패치 시작:', memoToDelete);
-    console.log('🔍 현재 사용자 ID:', user?.id);
-    console.log('🚀 deleteMemo 액션 디스패치 중...');
-    
+    if (!memoToDelete) return;
     dispatch(deleteMemo(memoToDelete));
-    
-    // Dialog 닫기
     setDeleteDialogVisible(false);
     setMemoToDelete(null);
   };
 
   const handleDeleteCancel = () => {
-    console.log('🚫 삭제 취소됨 - memoId:', memoToDelete);
     setDeleteDialogVisible(false);
     setMemoToDelete(null);
   };
@@ -164,7 +147,6 @@ export default function MemosScreen() {
 
   const handleEditMemo = (memo: StickerMemo) => {
     setMenuVisibleId(null);
-    // MemoDetail 화면으로 이동
     navigation.navigate('MemoDetail', { memoId: memo.id });
   };
 
@@ -183,18 +165,26 @@ export default function MemosScreen() {
 
   const renderMemoCard = ({ item }: { item: StickerMemo }) => {
     const priorityDetail = PRIORITY_DETAILS[item.priority] || PRIORITY_DETAILS['medium'];
-    const cardBackgroundColor = item.color || theme.colors.surface;
-    const isDarkBackground = theme.dark || ['#333333', '#000000'].includes(cardBackgroundColor.toLowerCase());
-    const textColor = isDarkBackground ? theme.colors.onSurface : '#333';
+    
+    // [CHANGE] 가독성을 위해 카드 배경은 테마 기본색을 사용하고, 메모 색상은 왼쪽 테두리(Accent)로 표현합니다.
+    const accentColor = item.color || 'transparent'; 
+    const textColor = theme.colors.onSurface;
+    const secondaryTextColor = theme.colors.onSurfaceVariant;
 
-    // 실제 데이터 구조에 맞게 필드 매핑
-    const memoData = item as any; // 임시로 any 사용
+    const memoData = item as any;
     const content = memoData.text || memoData.content || '';
     const title = memoData.title || '';
 
     return (
       <Card
-        style={[styles.memoCard, { backgroundColor: cardBackgroundColor }]}
+        style={[
+          styles.memoCard, 
+          { 
+            backgroundColor: theme.colors.surface, // 모든 카드의 배경색 통일
+            borderLeftColor: accentColor, // 메모 색상을 왼쪽 테두리로 표시
+            borderLeftWidth: 5,
+          }
+        ]}
         onPress={() => handleEditMemo(item)}
       >
         <Card.Content style={styles.cardContent}>
@@ -203,16 +193,8 @@ export default function MemosScreen() {
               <IconButton icon="pin" size={18} iconColor={theme.colors.primary} style={styles.pinIcon} />
             )}
             <Text variant="titleMedium" style={[styles.memoTitle, { color: textColor }]} numberOfLines={1}>
-              {title || (content ? content.substring(0, 30) + (content.length > 30 ? '...' : '') : '내용 없음')}
+              {title || (content ? content.substring(0, 30) + (content.length > 30 ? '...' : '') : '제목 없음')}
             </Text>
-            {/* 임시 직접 삭제 버튼 */}
-            <IconButton
-              icon="delete"
-              size={20}
-              iconColor={theme.colors.error}
-              onPress={() => handleDeleteMemo(item.id)}
-              style={{ marginRight: 8 }}
-            />
            
             <Menu
               visible={menuVisibleId === item.id}
@@ -221,8 +203,12 @@ export default function MemosScreen() {
                 <IconButton
                   icon="dots-vertical"
                   size={22}
-                  iconColor={textColor}
-                  onPress={() => setMenuVisibleId(item.id)}
+                  iconColor={secondaryTextColor}
+                  onPress={(e) => {
+                    // 카드 클릭 이벤트 전파 방지
+                    e.stopPropagation(); 
+                    setMenuVisibleId(item.id)
+                  }}
                 />
               }
             >
@@ -250,7 +236,7 @@ export default function MemosScreen() {
             <Text
               variant="bodyMedium"
               numberOfLines={4}
-              style={[styles.memoContent, { color: textColor }]}
+              style={[styles.memoContent, { color: secondaryTextColor }]}
             >
               {content}
             </Text>
@@ -263,8 +249,8 @@ export default function MemosScreen() {
                   key={`${item.id}-${tag}`}
                   mode="outlined"
                   compact
-                  style={[styles.tag, { borderColor: isDarkBackground ? '#666' : '#ccc' }]}
-                  textStyle={[styles.tagText, { color: isDarkBackground ? '#ddd' : '#555' }]}
+                  style={[styles.tag, { backgroundColor: theme.colors.surfaceVariant }]}
+                  textStyle={[styles.tagText, { color: theme.colors.onSurfaceVariant }]}
                 >
                   {tag}
                 </Chip>
@@ -273,39 +259,25 @@ export default function MemosScreen() {
           )}
 
           <View style={styles.cardFooter}>
-            <View style={styles.footerLeft}>
-              {/* 카테고리는 StickerMemo 타입에 없으므로 주석 처리 */}
-              {/* {item.category && (
-                <View style={styles.categoryContainer}>
-                   <View style={[styles.categoryColorDot, { backgroundColor: item.category.color || theme.colors.primary }]} />
-                   <Text style={[styles.footerText, { color: textColor, opacity: 0.8 }]}>{item.category.name}</Text>
-                </View>
-              )} */}
-              {/* 리마인더도 StickerMemo 타입에 없으므로 주석 처리 */}
-              {/* {item.reminder && (
-                <View style={styles.reminderContainer}>
-                    <IconButton icon="bell-outline" size={14} iconColor={textColor} style={{margin:0, padding:0}}/>
-                    <Text style={[styles.footerText, { color: textColor, opacity: 0.8 }]}>{formatDateTime(item.reminder)}</Text>
-                </View>
-              )} */}
-            </View>
-            <View style={styles.footerRight}>
-                <IconButton icon={priorityDetail.icon} size={16} iconColor={priorityDetail.color} style={{margin:0, padding:0}}/>
-                <Text style={[styles.footerText, { color: textColor, opacity: 0.8, marginLeft: 2 }]}>
-                    {priorityDetail.label}
-                </Text>
-            </View>
+             <Text variant="bodySmall" style={[styles.dateText, { color: secondaryTextColor }]}>
+              {formatDateTime(item.updated_at || item.created_at)}
+            </Text>
+            
+            {/* [CHANGE] 우선순위를 Chip으로 개선하여 가시성 향상 */}
+            <Chip 
+              icon={priorityDetail.icon}
+              compact
+              style={[styles.priorityChip, { backgroundColor: priorityDetail.color }]}
+              textStyle={[styles.priorityChipText, { color: getTextColorForBackground(priorityDetail.color) }]}
+            >
+              {priorityDetail.label}
+            </Chip>
           </View>
-           <Text variant="bodySmall" style={[styles.dateText, { color: textColor, opacity: 0.6 }]}>
-            최종 수정: {formatDateTime(item.updated_at || item.created_at)}
-          </Text>
         </Card.Content>
       </Card>
     );
   };
 
-  // 첫 로딩 시에만 전체 화면 로딩 표시, 이미 메모가 있으면 FlatList의 refreshing으로 처리
-  // 이렇게 하면 탭 전환 시 화면이 멈추지 않음
   if (isLoading && memos.length === 0 && !user?.id) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -368,7 +340,6 @@ export default function MemosScreen() {
         <Text style={{color: theme.colors.onErrorContainer}}>{error}</Text>
       </Snackbar>
 
-      {/* 삭제 확인 Dialog */}
       <Portal>
         <Dialog visible={deleteDialogVisible} onDismiss={handleDeleteCancel}>
           <Dialog.Title>메모 삭제</Dialog.Title>
@@ -417,37 +388,37 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 12,
-    paddingBottom: 80,
+    paddingBottom: 80, // FAB에 가려지지 않도록 충분한 여백
   },
   memoCard: {
     marginVertical: 8,
     borderRadius: 12,
     elevation: 3,
+    overflow: 'hidden', // 테두리 radius 적용을 위해
   },
   cardContent: {
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   pinIcon: {
+    margin: 0,
+    marginLeft: -8, // 왼쪽 여백 조절
     marginRight: 4,
-    marginLeft: -8,
   },
   memoTitle: {
     flex: 1,
-    fontWeight: '600',
-    fontSize: 17,
-    lineHeight: 24,
+    fontWeight: 'bold',
   },
   memoContent: {
     marginBottom: 12,
     fontSize: 14,
     lineHeight: 20,
-    opacity: 0.9,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -458,10 +429,10 @@ const styles = StyleSheet.create({
   tag: {
     height: 26,
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    borderWidth: 0, // Outlined 대신 surfaceVariant 배경색 사용
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
   cardFooter: {
@@ -469,39 +440,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 4,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  footerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  categoryColorDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-  },
-  reminderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  footerText: {
-    fontSize: 12,
   },
   dateText: {
-    fontSize: 11,
-    marginTop: 6,
-    textAlign: 'right',
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  // [추가] 우선순위 Chip 스타일
+  priorityChip: {
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 14,
+  },
+  priorityChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16, // 텍스트 수직 정렬
   },
   fab: {
     position: 'absolute',
@@ -518,4 +472,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
   },
-}); 
+  // 사용되지 않는 스타일 제거
+});

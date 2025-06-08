@@ -6,6 +6,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Linking,
 } from 'react-native';
 import {
   Text,
@@ -22,6 +23,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../store';
 import { signIn, clearError } from '../store/slices/authSlice';
 import { authService } from '../services/supabase';
+import InAppBrowser from 'react-native-inappbrowser-reborn';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -42,18 +44,28 @@ export default function LoginScreen() {
       }
 
       if (data?.url) {
-        // OAuth URL이 반환되면 웹브라우저에서 열기
-        Alert.alert(
-          'Google 로그인', 
-          '브라우저에서 Google 로그인을 완료해주세요.',
-          [
-            { text: '확인', style: 'default' }
-          ]
-        );
+        // InAppBrowser 우선 사용, 불가 시 Linking으로 fallback
+        if (await InAppBrowser.isAvailable()) {
+          await InAppBrowser.open(data.url, {
+            // iOS 옵션
+            dismissButtonStyle: 'cancel',
+            // Android 옵션
+            showTitle: false,
+            enableUrlBarHiding: true,
+            enableDefaultShare: false,
+            forceCloseOnRedirection: false,
+          });
+        } else {
+          await Linking.openURL(data.url);
+        }
+      } else {
+        Alert.alert('오류', '로그인 URL을 받아오지 못했습니다. 다시 시도해주세요.');
       }
     } catch (error) {
       console.error('Google login error:', error);
-      Alert.alert('오류', 'Google 로그인 중 예상치 못한 오류가 발생했습니다.');
+      if (error instanceof Error) {
+        Alert.alert('오류', error.message || 'Google 로그인 중 예상치 못한 오류가 발생했습니다.');
+      }
     }
   };
 

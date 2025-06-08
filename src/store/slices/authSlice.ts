@@ -4,6 +4,7 @@ import { authService } from '../../services/supabase';
 
 interface AuthState {
   user: User | null;
+  session: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -11,8 +12,9 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
+  session: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true,
   error: null,
 };
 
@@ -80,12 +82,27 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    setUser: (state, action: PayloadAction<{ user: User; session: any } | null>) => {
+      if (action.payload) {
+        state.user = action.payload.user;
+        state.session = action.payload.session;
+        state.isAuthenticated = true;
+      } else {
+        state.user = null;
+        state.session = null;
+        state.isAuthenticated = false;
+      }
+      state.isLoading = false;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+      state.isLoading = false;
+    },
     clearError: (state) => {
       state.error = null;
-    },
-    setUser: (state, action: PayloadAction<User | null>) => {
-      state.user = action.payload;
-      state.isAuthenticated = !!action.payload;
     },
   },
   extraReducers: (builder) => {
