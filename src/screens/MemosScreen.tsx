@@ -39,6 +39,21 @@ const PRIORITY_DETAILS = {
   'high': { label: '높음', icon: 'arrow-up-circle-outline', color: '#F44336' },
 };
 
+// [추가 1] 정렬을 위한 우선순위 숫자 값
+const PRIORITY_VALUES = {
+  'high': 3,
+  'medium': 2,
+  'low': 1,
+};
+
+// [추가 2] DB의 숫자 우선순위를 문자열 키로 변환하는 맵
+const PRIORITY_MAP: { [key: number]: 'low' | 'medium' | 'high' } = {
+  0: 'low',
+  1: 'medium',
+  2: 'high',
+};
+
+
 // 배경색에 따라 적절한 텍스트 색상(검정/흰색)을 반환하는 헬퍼 함수
 const getTextColorForBackground = (hexColor: string) => {
   if (!hexColor || hexColor.length < 7) {
@@ -80,10 +95,25 @@ export default function MemosScreen() {
     }, [dispatch, user?.id])
   );
 
+  // [수정 1] 정렬 로직 수정
   const filteredMemos = useMemo(() => {
     const sortedMemos = [...memos].sort((a, b) => {
+      // 1. 고정 여부 정렬 (가장 먼저)
       if (a.is_pinned && !b.is_pinned) return -1;
       if (!a.is_pinned && b.is_pinned) return 1;
+
+      // 2. 우선순위 정렬 (높음 -> 낮음 순)
+      const priorityKeyA = PRIORITY_MAP[a.priority as number] || 'medium';
+      const priorityKeyB = PRIORITY_MAP[b.priority as number] || 'medium';
+      
+      const priorityValueA = PRIORITY_VALUES[priorityKeyA];
+      const priorityValueB = PRIORITY_VALUES[priorityKeyB];
+
+      if (priorityValueA !== priorityValueB) {
+        return priorityValueB - priorityValueA; // 높은 값이 먼저 오도록 내림차순 정렬
+      }
+
+      // 3. 우선순위가 같을 경우 최신순으로 정렬
       const dateA = new Date(a.updated_at || a.created_at).getTime();
       const dateB = new Date(b.updated_at || b.created_at).getTime();
       return dateB - dateA;
@@ -162,9 +192,12 @@ export default function MemosScreen() {
   };
 
   const renderMemoCard = ({ item }: { item: StickerMemo }) => {
-    const priorityDetail = PRIORITY_DETAILS[item.priority] || PRIORITY_DETAILS['medium'];
+    // [수정 2] 표시 로직 수정
+    // DB에서 온 숫자 priority를 문자열 키로 변환
+    const priorityKey = PRIORITY_MAP[item.priority as number] || 'medium'; 
+    // 변환된 키를 사용해 올바른 우선순위 정보를 가져옴
+    const priorityDetail = PRIORITY_DETAILS[priorityKey];
     
-    // [CHANGE] 가독성을 위해 카드 배경은 테마 기본색을 사용하고, 메모 색상은 왼쪽 테두리(Accent)로 표현합니다.
     const accentColor = item.color || 'transparent'; 
     const textColor = theme.colors.onSurface;
     const secondaryTextColor = theme.colors.onSurfaceVariant;
@@ -178,8 +211,8 @@ export default function MemosScreen() {
         style={[
           styles.memoCard, 
           { 
-            backgroundColor: theme.colors.surface, // 모든 카드의 배경색 통일
-            borderLeftColor: accentColor, // 메모 색상을 왼쪽 테두리로 표시
+            backgroundColor: theme.colors.surface,
+            borderLeftColor: accentColor,
             borderLeftWidth: 5,
           }
         ]}
@@ -203,7 +236,6 @@ export default function MemosScreen() {
                   size={22}
                   iconColor={secondaryTextColor}
                   onPress={(e) => {
-                    // 카드 클릭 이벤트 전파 방지
                     e.stopPropagation(); 
                     setMenuVisibleId(item.id)
                   }}
@@ -261,7 +293,6 @@ export default function MemosScreen() {
               {formatDateTime(item.updated_at || item.created_at)}
             </Text>
             
-            {/* [CHANGE] 우선순위를 Chip으로 개선하여 가시성 향상 */}
             <Chip 
               icon={priorityDetail.icon}
               compact
@@ -363,6 +394,7 @@ export default function MemosScreen() {
   );
 }
 
+// 스타일은 변경할 필요 없습니다.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -425,13 +457,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tag: {
-    height: 26,
-    justifyContent: 'center',
-    borderWidth: 0, // Outlined 대신 surfaceVariant 배경색 사용
+    borderWidth: 0,
   },
   tagText: {
     fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16, 
   },
   cardFooter: {
     flexDirection: 'row',
@@ -443,7 +474,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.8,
   },
-  // [추가] 우선순위 Chip 스타일
   priorityChip: {
     height: 28,
     justifyContent: 'center',
@@ -470,5 +500,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
   },
-  // 사용되지 않는 스타일 제거
 });
