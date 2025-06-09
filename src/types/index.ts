@@ -58,7 +58,7 @@ export interface Memo {
   user_id: string;
 }
 
-// 스티커 메모 관련 타입 (기존 호환성을 위해 유지)
+// 메모로또 관련 타입 (기존 호환성을 위해 유지)
 export interface StickerMemo {
   id: string;
   user_id: string;

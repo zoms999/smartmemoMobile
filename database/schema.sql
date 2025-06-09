@@ -1,4 +1,4 @@
--- 스티커 메모 앱 데이터베이스 스키마
+-- 메모로또 앱 데이터베이스 스키마
 
 -- 메모 테이블 생성
 CREATE TABLE IF NOT EXISTS public.memos (

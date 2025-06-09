@@ -29,7 +29,7 @@
 ### 3.1 데이터베이스 및 파일 시스템 관련
 
 #### 📊 Supabase (@modelcontextprotocol/server-postgres)
-**목적**: 스티커 메모 앱의 주 데이터베이스 (PostgreSQL) 접근
+**목적**: 메모로또 앱의 주 데이터베이스 (PostgreSQL) 접근
 
 **주요 기능**:
 - SQL 쿼리 실행
@@ -131,7 +131,7 @@
 
 ## 4. 프로젝트별 특화 사용법
 
-### 4.1 스티커 메모 앱 개발 워크플로우
+### 4.1 메모로또 앱 개발 워크플로우
 
 #### 새 기능 개발 시:
 1. **계획 수립**: `@mcp-shrimp-task-manager.plan_task`

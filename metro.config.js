@@ -2,6 +2,9 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
+// 플랫폼 지원 설정
+config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+
 // Node.js 모듈 polyfill 추가
 config.resolver.alias = {
   ...config.resolver.alias,
@@ -20,6 +23,12 @@ config.resolver.nodeModulesPaths = [
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   ...require('node-libs-react-native'),
+};
+
+// 웹 플랫폼을 위한 추가 설정
+config.transformer = {
+  ...config.transformer,
+  assetPlugins: ['expo-asset/tools/hashAssetFiles'],
 };
 
 module.exports = config; 

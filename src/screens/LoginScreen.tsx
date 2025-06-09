@@ -72,7 +72,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
           <Title style={[styles.title, { color: theme.colors.primary }]}>
-            스티커 메모 & 일정 관리
+            메모로또 & 일정 관리
           </Title>
           <Paragraph style={styles.subtitle}>
             Google 계정으로 시작하여{'\n'}메모와 일정을 안전하게 동기화하세요
