@@ -37,14 +37,71 @@ export const memoService = {
 
   // 메모 수정
   async updateMemo(id: string, updates: Partial<Omit<StickerMemo, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) {
-    const { data, error } = await supabase
-      .from('memos')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    return { data, error };
+    try {
+      console.log('🔧 memoService.updateMemo 호출 - id:', id, 'updates:', updates);
+      
+      // ID를 숫자로 변환
+      const numericId = parseInt(id, 10);
+      if (isNaN(numericId)) {
+        console.error('❌ 잘못된 ID 형식:', id);
+        return { 
+          data: null, 
+          error: { message: '잘못된 메모 ID 형식입니다.' } 
+        };
+      }
+
+      // 사용자 인증 확인
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ 사용자 인증 실패:', authError?.message);
+        return { 
+          data: null, 
+          error: { message: '사용자 인증이 필요합니다.' } 
+        };
+      }
+
+      // 업데이트 데이터에서 불필요한 필드 제거 및 변환
+      const cleanUpdates: any = { ...updates };
+      
+      // content를 text로 변환 (호환성)
+      if ('content' in cleanUpdates) {
+        cleanUpdates.text = cleanUpdates.content;
+        delete cleanUpdates.content;
+      }
+
+      console.log('🗂️ Supabase UPDATE 쿼리 실행:', { 
+        id: numericId, 
+        updates: cleanUpdates,
+        userId: user.id 
+      });
+
+      const { data, error } = await supabase
+        .from('memos')
+        .update(cleanUpdates)
+        .eq('id', numericId)
+        .eq('user_id', user.id) // 보안을 위해 사용자 ID 확인
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Supabase UPDATE 쿼리 오류:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        return { data: null, error };
+      }
+
+      console.log('✅ Supabase UPDATE 쿼리 성공:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ memoService.updateMemo 예외:', error);
+      return { 
+        data: null, 
+        error: { message: '메모 수정 중 오류가 발생했습니다.' } 
+      };
+    }
   },
 
   // 메모 삭제
